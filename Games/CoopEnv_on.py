@@ -9,15 +9,11 @@ import numpy as np
 import random
 from copy import deepcopy
 
-
-# In[11]:
-
-
 class CoopEnv(gym.Env):
     
     def characteristic_function(self, coalition, singleton_vals):
         
-        """ Return the sum of values of individual players in a coalition.
+        """ Return the characteristic value of a coalition
             Input: 'coalition' - Set of players present within a coalition of a coalition structure
                    'singleton_vals' - Dictionary containing singleton values for each player
             Output: 'value' - float representing value of input coalition
@@ -26,6 +22,18 @@ class CoopEnv(gym.Env):
         
         value = sum(singleton_vals[f'Player {player}'] for player in coalition) * len(coalition)
         return value
+    
+    def get_sum(self, coalition, singleton_vals):
+        
+        """ Return the sum of values of individual players in a coalition.
+            Input: 'coalition' - Set of players present within a coalition of a coalition structure
+                   'singleton_vals' - Dictionary containing singleton values for each player
+            Output: 'value' - float representing value of input coalition
+        
+        """
+        
+        value = sum(singleton_vals[f'Player {player}'] for player in coalition) 
+        return value 
     
     
     def get_observations_from_CS(self, CS, locations, n):
@@ -56,7 +64,7 @@ class CoopEnv(gym.Env):
         return binary_list
     
     
-    def __init__(self, n, task_num):
+    def __init__(self, n, task_num, cnf=0.1):
         
         
         # Numerical Parameters:
@@ -64,6 +72,7 @@ class CoopEnv(gym.Env):
         self.n = n
         self.num_of_tasks = task_num
         self.done = False
+        self.cnf = cnf # communication noise factor of singleton value 
         # -------------------- #
         
         
@@ -72,18 +81,20 @@ class CoopEnv(gym.Env):
         self.CS = [set() for i in range(1, self.num_of_tasks + 1)] # starting coalition structure 
         self.coalition_dict = {} # track the location of each agent in the coalition structure 
         self.single_dict = {}
+        self.stability_dict = {}
         # ---------- #
         
         
         # Initialisation:
         # -------------- #
-        for player_number in range(self.n): # choose a random task for each agent
+        for player in range(self.n): # choose a random task for each agent
             
             desired_coalition = random.randint(0, self.num_of_tasks-1) # pick a random coalition...
-            self.CS[desired_coalition].add(f'{player_number +1 }') # ... and add the player to it...
+            self.CS[desired_coalition].add(f'{player +1 }') # ... and add the player to it...
             
-            self.coalition_dict[f'Player {player_number + 1}'] = desired_coalition # ... while recording the index...
-            self.single_dict[f'Player {player_number + 1}'] = random.random() # ...and its value
+            self.coalition_dict[f'Player {player + 1}'] = desired_coalition # ... while recording the index...
+            self.single_dict[f'Player {player + 1}'] = random.random() # ...and its value ...
+            self.stability_dict[f'Player {player + 1}'] = False # ... while setting all stability to false
         # -------------- #
         
         
@@ -91,44 +102,73 @@ class CoopEnv(gym.Env):
         
         # Get new coalition structure:
         # --------------------------- #
-        
-        for agent in range(self.n): # action will be index of task to join
+        for player in range(self.n): # action will be index of task to join
             
-            new_coalition = actions[agent] # get new coalition index
-            current_coalition = self.coalition_dict[f'Player {agent+ 1}'] # get old coalition index
+            new_coalition = actions[player] # get new coalition index
+            current_coalition = self.coalition_dict[f'Player {player + 1}'] # get old coalition index
             
            
-            self.CS[current_coalition].remove(f'{agent +1 }') # remove from old coalition...
-            self.CS[new_coalition].add(f'{agent +1 }') # add player to new coalition...
+            self.CS[current_coalition].remove(f'{player + 1}') # remove from old coalition...
+            self.CS[new_coalition].add(f'{player + 1}') # add player to new coalition...
 
 
-            self.coalition_dict[f'Player {agent + 1}'] = new_coalition # ... and update coalition map
+            self.coalition_dict[f'Player {player + 1}'] = new_coalition # ... and update coalition map
 
             
         next_state = self.get_observations_from_CS(self.CS, self.coalition_dict, self.n)
         # --------------------------- #
         
+        # Communicate singleton values between coalition players: 
+        # ------------------------------------------------------ #
+        communicated_vals = {}
+        for player in range(self.n):
+            s_val = self.single_dict[f'Player {player + 1}']
+            communicated_vals[f'Player {player + 1}'] = s_val + s_val*random.uniform(-self.cnf, self.cnf)
+        # ------------------------------------------------------ #
         
-        # Observe payoffs for coalition structure:
+        
+        # Get payoffs for coalitions from char func:
         # --------------------------------------- #
         char_vals = []
-        for subset in self.CS:
+        real_sum = []
+        for coalition in self.CS: # get value for each coalition in coalition structure
             
-            if len(subset) > 0:
+            if len(coalition) > 0:
                 
-                value = self.characteristic_function(subset, self.single_dict)
-                char_vals.append(value)
+                full_value = self.characteristic_function(coalition, self.single_dict)
+                char_vals.append(full_value)
+                
+                sum_value = self.get_sum(coalition, communicated_vals)
+                real_sum.append(sum_value)
                 
             else:
                 
                 char_vals.append(0)
-        
+                real_sum.append(0)
+        # --------------------------------------- #
+                
         rewards = []
-        for player in range(self.n):
+        for player in range(self.n): # determine how this will be divided for players within the coalitions
             
-            location = self.coalition_dict[f'Player {player + 1}']
-            coalition_val = char_vals[location]
-            reward = coalition_val/len(self.CS[location]) # assume reward is equal dist of coalition val
+            location = self.coalition_dict[f'Player {player + 1}'] # get location of player
+            r_val = self.single_dict[f'Player {player + 1}'] # individual player real singleton value
+            c_val = communicated_vals[f'Player {player + 1}'] # individual player communicated singleton value
+            
+            coalition_val = char_vals[location] # value of the coalition the player is in
+            comm_sum = real_sum[location] # sum of singleton values of coalition
+            
+            award = (c_val/comm_sum) * coalition_val
+            
+            # check stability
+            if award > r_val:
+            
+                reward = award  
+                self.stability_dict[f'Player {player + 1}'] = True
+                
+            else:
+                
+                reward = 0
+                
             rewards.append(reward)
         # --------------------------------------- #
         
@@ -142,14 +182,14 @@ class CoopEnv(gym.Env):
         # ------------------------------------------- #
         
         
-    def reset(self, n, task_num):
-        
+    def reset(self, n, task_num, cnf=0.1):
         
         # Numerical Parameters:
         # -------------------- #
         self.n = n
         self.num_of_tasks = task_num
         self.done = False
+        self.cnf = cnf # communication noise factor of singleton value 
         # -------------------- #
         
         
@@ -158,27 +198,28 @@ class CoopEnv(gym.Env):
         self.CS = [set() for i in range(1, self.num_of_tasks + 1)] # starting coalition structure 
         self.coalition_dict = {} # track the location of each agent in the coalition structure 
         self.single_dict = {}
+        self.stability_dict = {}
         # ---------- #
         
         
         # Initialisation:
         # -------------- #
-        for player_number in range(self.n): # choose a random task for each agent
+        for player in range(self.n): # choose a random task for each agent
             
             desired_coalition = random.randint(0, self.num_of_tasks-1) # pick a random coalition...
-            self.CS[desired_coalition].add(f'{player_number +1 }') # ... and add the player to it...
+            self.CS[desired_coalition].add(f'{player +1 }') # ... and add the player to it...
             
-            self.coalition_dict[f'Player {player_number + 1}'] = desired_coalition # ... while recording the index...
-            self.single_dict[f'Player {player_number + 1}'] = random.random() # ...and its value
+            self.coalition_dict[f'Player {player + 1}'] = desired_coalition # ... while recording the index...
+            self.single_dict[f'Player {player + 1}'] = random.random() # ...and its value ...
+            self.stability_dict[f'Player {player + 1}'] = False # ... while setting all stability to false
         # -------------- #
         
         state = self.get_observations_from_CS(self.CS, self.coalition_dict, self.n)
-        
+
         return state
     
     def render(self):
         pass
-
 
 
 
