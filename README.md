@@ -1,5 +1,3 @@
-# Multi-Agent Reinforcement Learning for Coalitional Formation Games
-
 This repository contains all files related to simulating the coalitional formation games and applying MARL algorithms to solve for the stable coalition structure. This is the base model:
 
 - Characteristic function is strictly superadditive; the sum of singleton values of constituent players is multiplied by length of the coalition. Said singleton values are pulled randomly between 0 and 1.
