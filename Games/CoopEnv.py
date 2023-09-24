@@ -122,45 +122,44 @@ class CoopEnv(gym.Env):
         # ------------------------------------------------------ #
         communicated_vals = {}
         for player in range(self.n):
-            s_val = self.single_dict[f'Player {player + 1}']
-            communicated_vals[f'Player {player + 1}'] = s_val + s_val*random.uniform(-self.cnf, self.cnf)
+            single_val = self.single_dict[f'Player {player + 1}']
+            communicated_vals[f'Player {player + 1}'] = single_val * (1 + random.uniform(-self.cnf, self.cnf)) # value of singleton (100%) +- cnf (as percentage) 
         # ------------------------------------------------------ #
-        
         
         # Get payoffs for coalitions from char func:
         # --------------------------------------- #
-        char_vals = []
-        real_sum = []
+        coal_char_vals = []
+        real_comm_sum = []
         for coalition in self.CS: # get value for each coalition in coalition structure
             
             if len(coalition) > 0:
                 
                 full_value = self.characteristic_function(coalition, self.single_dict)
-                char_vals.append(full_value)
+                coal_char_vals.append(full_value)
                 
                 sum_value = self.get_sum(coalition, communicated_vals)
-                real_sum.append(sum_value)
+                real_comm_sum.append(sum_value)
                 
             else:
                 
-                char_vals.append(0)
-                real_sum.append(0)
+                coal_char_vals.append(0)
+                real_comm_sum.append(0)
         # --------------------------------------- #
                 
         rewards = []
         for player in range(self.n): # determine how this will be divided for players within the coalitions
             
             location = self.coalition_dict[f'Player {player + 1}'] # get location of player
-            r_val = self.single_dict[f'Player {player + 1}'] # individual player real singleton value
-            c_val = communicated_vals[f'Player {player + 1}'] # individual player communicated singleton value
+            real_val = self.single_dict[f'Player {player + 1}'] # individual player real singleton value
+            comm_val = communicated_vals[f'Player {player + 1}'] # individual player communicated singleton value
             
-            coalition_val = char_vals[location] # value of the coalition the player is in
-            comm_sum = real_sum[location] # sum of singleton values of coalition
+            coal_val = coal_char_vals[location] # value of the coalition the player is in
+            coal_comm_sum = real_comm_sum[location] # sum of singleton values of coalition
             
-            award = (c_val/comm_sum) * coalition_val
+            award = (comm_val/coal_comm_sum) * coal_val
             
-            # check stability
-            if award > r_val:
+            # check stability with individual rationality
+            if award >= real_val:
             
                 reward = award  
                 self.stability_dict[f'Player {player + 1}'] = True
@@ -171,8 +170,6 @@ class CoopEnv(gym.Env):
                 
             rewards.append(reward)
         # --------------------------------------- #
-        
-        
         # Check termination and return next step info:
         # ------------------------------------------- #    
         info = [self.CS]
