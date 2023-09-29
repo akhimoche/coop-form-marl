@@ -49,18 +49,16 @@ class CoopEnv(gym.Env):
         """
         
         binary_list = []
-        generic_string = np.zeros((n))
-        observations = [CS[locations[f'Player {i+1}']] for i in range(n)] # for each agent, get the coalition they occupy
         
-        for subset in observations:
-            
-            a = np.copy(generic_string)
-            for j in subset:
-                
-                a[int(j)-1] = 1
-                
-            binary_list.append(a)
-            
+        for i in range(n):
+
+            subset = CS[locations[f'Player {i+1}']]
+            binary_observation = np.zeros((n))
+
+            indices = [a-1 for a in list(subset)] # indices are 1 less than the player tag
+            binary_observation[indices] = 1
+            binary_list.append(binary_observation)
+        
         return binary_list
     
     
@@ -81,7 +79,6 @@ class CoopEnv(gym.Env):
         self.CS = [set() for i in range(1, self.num_of_tasks + 1)] # starting coalition structure 
         self.coalition_dict = {} # track the location of each agent in the coalition structure 
         self.single_dict = {}
-        self.stability_dict = {}
         # ---------- #
         
         
@@ -90,11 +87,11 @@ class CoopEnv(gym.Env):
         for player in range(self.n): # choose a random task for each agent
             
             desired_coalition = random.randint(0, self.num_of_tasks-1) # pick a random coalition...
-            self.CS[desired_coalition].add(f'{player +1 }') # ... and add the player to it...
+            self.CS[desired_coalition].add(player+1) # ... and add the player to it...
             
             self.coalition_dict[f'Player {player + 1}'] = desired_coalition # ... while recording the index...
-            self.single_dict[f'Player {player + 1}'] = random.random() # ...and its value ...
-            self.stability_dict[f'Player {player + 1}'] = False # ... while setting all stability to false
+            random.seed(player)
+            self.single_dict[f'Player {player + 1}'] = random.random() # ...and its value
         # -------------- #
         
         
@@ -108,8 +105,8 @@ class CoopEnv(gym.Env):
             current_coalition = self.coalition_dict[f'Player {player + 1}'] # get old coalition index
             
            
-            self.CS[current_coalition].remove(f'{player + 1}') # remove from old coalition...
-            self.CS[new_coalition].add(f'{player + 1}') # add player to new coalition...
+            self.CS[current_coalition].remove(player+1) # remove from old coalition...
+            self.CS[new_coalition].add(player+1) # add player to new coalition...
 
 
             self.coalition_dict[f'Player {player + 1}'] = new_coalition # ... and update coalition map
@@ -123,6 +120,7 @@ class CoopEnv(gym.Env):
         communicated_vals = {}
         for player in range(self.n):
             single_val = self.single_dict[f'Player {player + 1}']
+            random.seed(player)
             communicated_vals[f'Player {player + 1}'] = single_val * (1 + random.uniform(-self.cnf, self.cnf)) # value of singleton (100%) +- cnf (as percentage) 
         # ------------------------------------------------------ #
         
@@ -162,7 +160,6 @@ class CoopEnv(gym.Env):
             if award >= real_val:
             
                 reward = award  
-                self.stability_dict[f'Player {player + 1}'] = True
                 
             else:
                 
@@ -195,7 +192,6 @@ class CoopEnv(gym.Env):
         self.CS = [set() for i in range(1, self.num_of_tasks + 1)] # starting coalition structure 
         self.coalition_dict = {} # track the location of each agent in the coalition structure 
         self.single_dict = {}
-        self.stability_dict = {}
         # ---------- #
         
         
@@ -204,11 +200,11 @@ class CoopEnv(gym.Env):
         for player in range(self.n): # choose a random task for each agent
             
             desired_coalition = random.randint(0, self.num_of_tasks-1) # pick a random coalition...
-            self.CS[desired_coalition].add(f'{player +1 }') # ... and add the player to it...
+            self.CS[desired_coalition].add(player+1) # ... and add the player to it...
             
             self.coalition_dict[f'Player {player + 1}'] = desired_coalition # ... while recording the index...
+            random.seed(player)
             self.single_dict[f'Player {player + 1}'] = random.random() # ...and its value ...
-            self.stability_dict[f'Player {player + 1}'] = False # ... while setting all stability to false
         # -------------- #
         
         state = self.get_observations_from_CS(self.CS, self.coalition_dict, self.n)
