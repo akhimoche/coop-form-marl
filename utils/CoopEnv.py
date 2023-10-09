@@ -70,28 +70,28 @@ class CoopEnv(gym.Env):
         return binary_list
 
 
-    def __init__(self, n, task_num, cnf=0.1):
+    def __init__(self, n, tasks, cnf=0.1):
 
 
         # Numerical Parameters:
-        # -------------------- #
+        # ------------------------------------------------------ #
         self.n = n
-        self.num_of_tasks = task_num
+        self.num_of_tasks = tasks
         self.done = False
         self.cnf = cnf # communication noise factor of singleton value
-        # -------------------- #
+        # ------------------------------------------------------ #
 
 
         # Data Arrays:
-        # ---------- #
+        # ------------------------------------------------------ #
         self.CS = [set() for i in range(1, self.num_of_tasks + 1)] # starting coalition structure
         self.coalition_dict = {} # track the location of each agent in the coalition structure
         self.single_dict = {}
-        # ---------- #
+        # ------------------------------------------------------ #
 
 
         # Initialisation:
-        # -------------- #
+        # ------------------------------------------------------ #
         random.seed() # reset the seed
         for player in range(self.n): # choose a random task for each agent
 
@@ -99,20 +99,25 @@ class CoopEnv(gym.Env):
             self.CS[desired_coalition].add(f'{player +1 }') # ... and add the player to it...
 
             self.coalition_dict[f'Player {player + 1}'] = desired_coalition # ... record index...
-            value = random.random()
-            self.single_dict[f'Player {player + 1}'] = value # ...and its value
-        # -------------- #
+            self.single_dict[f'Player {player + 1}'] = random.random() # ...and its value
+        # ------------------------------------------------------ #
 
 
     def step(self, actions):
 
-        # Get new coalition structure:
-        # --------------------------- #
+        """ Three phases:
+            Movement - Agents' chosen actions are applied to form a new CS.
+            Communication - Agents communicate their singleton values to coalition peers
+            Payoff Distribution - assign payoff and check i.r satisfied for all players
+                                  if not, then coalition gets 0 payoff as disagreement
+        """
+
+        # MOVEMENT PHASE:
+        # ------------------------------------------------------ #
         for player in range(self.n): # action will be index of task to join
 
             new_coalition = actions[player] # get new coalition index
             current_coalition = self.coalition_dict[f'Player {player + 1}'] # old coalition index
-
 
             self.CS[current_coalition].remove(f'{player + 1}') # remove from old coalition...
             self.CS[new_coalition].add(f'{player + 1}') # add player to new coalition...
@@ -122,96 +127,100 @@ class CoopEnv(gym.Env):
 
 
         next_state = self.get_observations_from_CS(self.CS, self.coalition_dict, self.n)
-        # --------------------------- #
+        # ------------------------------------------------------ #
 
-        # Communicate singleton values between coalition players:
+        # COMMUNICATION PHASE:
         # ------------------------------------------------------ #
         communicated_vals = {}
+        random.seed() # reset the seed for random communication noise (temporary)
         for player in range(self.n):
 
-            single_val = self.single_dict[f'Player {player + 1}']
-            random.seed() # reset the seed for random communication noise (temporary)
+            singleton_val = self.single_dict[f'Player {player + 1}']
             noise = random.uniform(-self.cnf, self.cnf)
-            communicated_val = single_val * (1 + noise)
-            communicated_vals[f'Player {player + 1}'] = single_val * (1 + noise)
-        # ------------------------------------------------------ #
+            communicated_vals[f'Player {player + 1}'] = singleton_val * (1 + noise)
 
         # Get payoffs for coalitions from char func:
-        # --------------------------------------- #
         coal_char_vals = []
-        real_comm_sum = []
+        coal_sum_vals = []
         task = 0
-        for coalition in self.CS: # get value for each coalition in coalition structure
+        for coalition in self.CS:
 
+            # get value for each coalition in coalition structure
             if len(coalition) > 0:
 
-                full_value = self.characteristic_function(coalition, self.single_dict, task, self.n)
-                coal_char_vals.append(full_value)
+                char_value = self.characteristic_function(coalition, self.single_dict, task, self.n)
+                coal_char_vals.append(char_value)
 
                 sum_value = self.get_sum(coalition, communicated_vals)
-                real_comm_sum.append(sum_value)
+                coal_sum_vals.append(sum_value)
 
             else:
 
                 coal_char_vals.append(0)
-                real_comm_sum.append(0)
+                coal_sum_vals.append(0)
 
             task += 1
-        # --------------------------------------- #
+        # ------------------------------------------------------ #
 
-        rewards = []
+        # PAYOFF DISTRIBUTION PHASE:
+        # ------------------------------------------------------ #
+        rewards = np.zeros((self.n))
         for player in range(self.n): # determine how payoff be divided for players in coalitions
 
-            location = self.coalition_dict[f'Player {player + 1}'] # player location
-            real_val = self.single_dict[f'Player {player + 1}'] # player singleton value
+            # global values #
+            location = self.coalition_dict[f'Player {player + 1}'] # player location (task index in CS)
+            singleton_val = self.single_dict[f'Player {player + 1}'] # player singleton value
+
+            # local values #
             comm_val = communicated_vals[f'Player {player + 1}'] # communicated s. value
-
             coal_val = coal_char_vals[location] # value of the coalition the player is in
-            coal_comm_sum = real_comm_sum[location] # sum of singleton values of coalition
+            coal_comm_sum = coal_sum_vals[location] # sum of singleton values of coalition
 
-            award = (comm_val/coal_comm_sum) * coal_val
+            payoff = (comm_val/coal_comm_sum) * coal_val
+            rewards[player] = payoff
 
             # check stability with individual rationality
-            if award >= real_val:
+            if payoff < singleton_val:
 
-                reward = award
+                # if an agent doesn't like coalition
+                # all agents get 0 reward
+                coalition = self.CS[location]
+                indices = [int(s)-1 for s in coalition]
+                rewards[indices] = 0
+        # ------------------------------------------------------ #
 
-            else:
 
-                reward = 0
-
-            rewards.append(reward)
-        # --------------------------------------- #
+        # ------------------------------------------------------ #
         # Check termination and return next step info:
-        # ------------------------------------------- #
+        # ------------------------------------------------------ #
         info = [self.CS]
 
         # compile next_state, reward, done, info and return
         return next_state, rewards, self.done, info
-        # ------------------------------------------- #
+        # ------------------------------------------------------ #
 
 
-    def reset(self, n, task_num, cnf=0.1):
+    def reset(self, n, tasks, cnf=0.1):
 
         # Numerical Parameters:
-        # -------------------- #
+        # ------------------------------------------------------ #
         self.n = n
-        self.num_of_tasks = task_num
+        self.num_of_tasks = tasks
         self.done = False
         self.cnf = cnf # communication noise factor of singleton value
-        # -------------------- #
+        # ------------------------------------------------------ #
 
 
         # Data Arrays:
-        # ---------- #
+        # ------------------------------------------------------ #
         self.CS = [set() for i in range(1, self.num_of_tasks + 1)] # starting coalition structure
         self.coalition_dict = {} # track the location of each agent in the coalition structure
         self.single_dict = {}
-        # ---------- #
+        # ------------------------------------------------------ #
 
 
         # Initialisation:
-        # -------------- #
+        # ------------------------------------------------------ #
         random.seed() # reset the seed
         for player in range(self.n): # choose a random task for each agent
 
@@ -219,9 +228,8 @@ class CoopEnv(gym.Env):
             self.CS[desired_coalition].add(f'{player +1 }') # ... and add the player to it...
 
             self.coalition_dict[f'Player {player + 1}'] = desired_coalition # ... while recording the index...
-            value = random.random()
-            self.single_dict[f'Player {player + 1}'] = value # ...and its value
-        # -------------- #
+            self.single_dict[f'Player {player + 1}'] = random.random() # ...and its value
+        # ------------------------------------------------------ #
 
         state = self.get_observations_from_CS(self.CS, self.coalition_dict, self.n)
 
