@@ -16,13 +16,16 @@ class CoopEnv(gym.Env):
 
         """
 
-        random.seed(a) # original seeds with a shift for variety
-        bias = random.uniform(0, len(C)) # not necessarily superadditive...
+        random.seed(a) # set seed
+        bias = random.uniform(0, len(C)) # get a random mult. bias
 
-        if len(C) == 1: # ... but individual coalitions are always the s values
+        if len(C) == 1: # ... but individual coalitions are always have m.b = 1
             bias = 1
 
-        char_val = sum(sin_vals[f'Player {player}'] for player in C) * bias
+        # get sum of singleton values in coaliton ...
+        singleton_value_sum_in_C = sum(sin_vals[f'Player {player}'] for player in C)
+        # ... and multiply this sum by bias
+        char_val = singleton_value_sum_in_C * bias
 
         return char_val
 
@@ -34,17 +37,17 @@ class CoopEnv(gym.Env):
 
         """
 
-        bin_list = []
-        for i in range(n):
+        observations_in_bit = []
+        for player in range(n):
 
-            C = CS[locs[f'Player {i+1}']]
-            bin_obs = np.zeros((n))
+            bit_observation = np.zeros((n))
+            C = CS[locs[f'Player {player+1}']]
+            agents_within_C = [int(a)-1 for a in list(C)] # indices are 1 less than the player tag
 
-            indices = [int(a)-1 for a in list(C)] # indices are 1 less than the player tag
-            bin_obs[indices] = 1
-            bin_list.append(bin_obs)
+            bit_observation[agents_within_C] = 1
+            observations_in_bit.append(bit_observation)
 
-        return bin_list
+        return observations_in_bit
     # // -------------------- Game Support Methods -------------------- #
 
 
@@ -109,13 +112,13 @@ class CoopEnv(gym.Env):
 
             # global values #
             loc = locs[f'Player {player + 1}'] # player location (task index in CS)
-            sin_val = sin_vals[f'Player {player + 1}'] # player s value
+            sin_val = sin_vals[f'Player {player + 1}'] # player singleton value
 
 
             # local values #
             comm_val = comm_vals[f'Player {player + 1}'] # communicated s. value
             char_val = char_vals[loc] # value of the coalition the player is in
-            comm_sum = sum_vals[loc] # sum of s values of coalition
+            comm_sum = sum_vals[loc] # sum of singleton values in coalition
 
             payoff = (comm_val/comm_sum) * char_val
             rewards[player] = payoff
@@ -126,8 +129,8 @@ class CoopEnv(gym.Env):
                 # if an agent doesn't like coalition
                 # all agents get 0 reward
                 C = CS[loc]
-                indices = [int(a)-1 for a in C]
-                rewards[indices] = 0
+                agents_within_C = [int(a)-1 for a in C]
+                rewards[agents_within_C] = 0
 
         return rewards
     # // -------------------- Game Phase Execution Methods -------------------- #
@@ -149,7 +152,7 @@ class CoopEnv(gym.Env):
         # Data Arrays:
         # ------------------------------------------------------ #
         self.CS = [set() for i in range(1, self.num_of_tasks + 1)] # starting coalition structure
-        self.locs = {} # track the location of each agent in the coalition structure
+        self.locs = {} #  location of each agent in the coalition structure
         self.sin_vals = {} # assigned singleton value to each agent
         # ------------------------------------------------------ #
 
