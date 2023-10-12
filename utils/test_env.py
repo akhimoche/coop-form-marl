@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import random
 from CoopEnv import CoopEnv
 
 class test_env(unittest.TestCase):
@@ -12,17 +13,26 @@ class test_env(unittest.TestCase):
 
         self.setUp()
 
+        # test 1
         C = {1,2,3}
         singleton_vals = {'Player 1': 1,'Player 2': 2, 'Player 3': 3}
         # bias for random.uniform(0,3) with seed(0) = 2.533265554575144
-        expected_value = 2.533265554575144 * 6
-        real_value = self.env.characteristic_function(C, singleton_vals, 1, 3, a=0)
+        coalition_id = hash(tuple(sorted(C)))
+        random.seed(coalition_id)
+        expected_bias = random.uniform(0,len(C))
+        expected_value = 6 * expected_bias
 
+        real_value = self.env.characteristic_function(C, singleton_vals, coalition_id)
+
+        # test2
         C2 = {1}
-        singleton_vals2 = {'Player 1': 1}
-        # len 1 coalitions are always the singleton value
-        expected_value2 = 1
-        real_value2 = self.env.characteristic_function(C2, singleton_vals2, 1, 3, a=0)
+        singleton_vals2 = {'Player 1': 5}
+        # bias for random.uniform(0,3) with seed(0) = 2.533265554575144
+        coalition_id2 = hash(tuple(sorted(C2)))
+        expected_value2 = 5
+
+        real_value2 = self.env.characteristic_function(C2, singleton_vals2, coalition_id2)
+
 
         self.assertEqual(real_value,expected_value)
         self.assertEqual(real_value2,expected_value2)
@@ -69,15 +79,17 @@ class test_env(unittest.TestCase):
         cnf = 0.2
 
         expected_comm_vals = {'Player 1': 1.1377687406100192, 'Player 2': 2.206363522352242, 'Player 3': 2.904685896997014, 'Player 4': 3.6142668004687413, 'Player 5': 5.022549442737217}
-        expected_char_vals = [7.648274175113995, 4.533658707664273, 4]
+        expected_char_vals = []
+        task = 0
+        for C in initial_CS:
+            val = self.env.characteristic_function(C, singleton_vals, task*n+hash(tuple(sorted(C))))
+            expected_char_vals.append(val)
+            task+= 1
         expected_sum_vals = [4.04245463761, 7.22891296509, 3.6142668004687413]
         comm_vals, char_vals, sum_vals = self.env.communication_phase(initial_CS, singleton_vals, n, cnf, a=0)
 
         # to avoid some rounding errors from manual calculation
-        expected_char_vals = [round(elem, 5) for elem in expected_char_vals]
         expected_sum_vals = [round(elem, 5) for elem in expected_sum_vals]
-
-        char_vals = [round(elem, 5) for elem in char_vals]
         sum_vals = [round(elem, 5) for elem in sum_vals]
 
         # Write assertions to verify the correctness of the Communication Phase results
