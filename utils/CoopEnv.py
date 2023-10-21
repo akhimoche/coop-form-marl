@@ -63,7 +63,7 @@ class CoopEnv(gym.Env):
 
         for player in range(n): # action will be index of task to join
 
-            new_coalition = actions[player] # get new coalition index
+            new_coalition = int(actions[player]) # get new coalition index
             current_coalition = locations[f'Player {player + 1}'] # old coalition index
 
             CS[current_coalition].remove(f'{player + 1}') # remove from old coalition...
@@ -76,15 +76,13 @@ class CoopEnv(gym.Env):
         next_state = self.get_observations_from_CS(CS, locations, n)
         return next_state
 
-    def communication_phase(self, CS, singleton_vals, n, cnf):
+    def communication_phase(self, CS, singleton_vals, n, cnf, actions):
 
         comm_vals = {}
-        random.seed() # reset the seed for random communication noise (temporary)
         for player in range(n):
 
             singleton_val = singleton_vals[f'Player {player + 1}']
-            noise = random.uniform(-cnf, cnf)
-            comm_vals[f'Player {player + 1}'] = singleton_val * (1 + noise)
+            comm_vals[f'Player {player + 1}'] = singleton_val * (1 + actions[player])
 
         # Get payoffs for coalitions from char func:
         char_vals = []
@@ -187,10 +185,10 @@ class CoopEnv(gym.Env):
                                   if not, then coalition gets 0 payoff as disagreement
         """
         # Movement Phase
-        next_state = self.movement_phase(self.CS, self.player_locations, self.n, actions)
+        next_state = self.movement_phase(self.CS, self.player_locations, self.n, actions[:,0])
 
         # Communication Phase
-        comm_vals, char_vals, comm_tots = self.communication_phase(self.CS, self.singleton_vals, self.n, self.cnf)
+        comm_vals, char_vals, comm_tots = self.communication_phase(self.CS, self.singleton_vals, self.n, self.cnf, actions[:,1])
 
         # Payoff Distribution Phase
         rewards = self.payoff_dist_phase(comm_vals, char_vals, comm_tots, self.CS, self.player_locations, self.singleton_vals, self.n)
