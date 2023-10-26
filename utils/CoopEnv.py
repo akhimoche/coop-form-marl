@@ -76,7 +76,7 @@ class CoopEnv(gym.Env):
         next_state = self.get_observations_from_CS(CS, locations, n)
         return next_state
 
-    def communication_phase(self, CS, singleton_vals, n, cnf, actions):
+    def communication_phase(self, CS, singleton_vals, n, actions):
 
         comm_vals = {}
         for player in range(n):
@@ -143,7 +143,7 @@ class CoopEnv(gym.Env):
 
 
     # -------------------- Gym Methods -------------------- # //
-    def __init__(self, n, tasks, cnf=0.1):
+    def __init__(self, n, tasks):
 
 
         # Numerical Parameters:
@@ -151,7 +151,6 @@ class CoopEnv(gym.Env):
         self.n = n
         self.tasks = tasks
         self.done = False
-        self.cnf = cnf # communication noise factor of singleton value
         # ------------------------------------------------------ #
 
 
@@ -184,11 +183,11 @@ class CoopEnv(gym.Env):
             Payoff Distribution - assign payoff and check i.r satisfied for all players
                                   if not, then coalition gets 0 payoff as disagreement
         """
-        # Movement Phase
+        # Movement Phase - first column is agent movement actions
         next_state = self.movement_phase(self.CS, self.player_locations, self.n, actions[:,0])
 
         # Communication Phase
-        comm_vals, char_vals, comm_tots = self.communication_phase(self.CS, self.singleton_vals, self.n, self.cnf, actions[:,1])
+        comm_vals, char_vals, comm_tots = self.communication_phase(self.CS, self.singleton_vals, self.n, actions[:,1])
 
         # Payoff Distribution Phase
         rewards = self.payoff_dist_phase(comm_vals, char_vals, comm_tots, self.CS, self.player_locations, self.singleton_vals, self.n)
@@ -199,14 +198,13 @@ class CoopEnv(gym.Env):
         # ------------------------------------------------------ #
 
 
-    def reset(self, n, tasks, cnf=0.1):
+    def reset(self, n, tasks):
 
         # Numerical Parameters:
         # ------------------------------------------------------ #
         self.n = n
         self.tasks = tasks
         self.done = False
-        self.cnf = cnf # communication noise factor of singleton value
         # ------------------------------------------------------ #
 
 
