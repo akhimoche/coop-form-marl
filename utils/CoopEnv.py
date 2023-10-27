@@ -167,9 +167,8 @@ class CoopEnv(gym.Env):
 
         # Initialisation:
         # ------------------------------------------------------ #
-        random.seed() # reset the seed
         for player in range(self.n): # choose a random task for each agent
-
+            random.seed(player) # reset the seed
             chosen_task = random.randint(0, self.tasks-1) # pick a random coalition...
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
@@ -222,9 +221,8 @@ class CoopEnv(gym.Env):
 
         # Initialisation:
         # ------------------------------------------------------ #
-        random.seed() # reset the seed
         for player in range(self.n): # choose a random task for each agent
-
+            random.seed(player) # reset the seed
             chosen_task = random.randint(0, self.tasks-1) # pick a random coalition...
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
