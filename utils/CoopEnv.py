@@ -46,11 +46,13 @@ class CoopEnv(gym.Env):
 
         for i in range(n):
 
-            subset = CS[locations[f'Player {i+1}']]
-            binary_observation = np.zeros((n))
+            loc = locations[f'Player {i+1}']
+            subset = CS[loc]
+            binary_observation = np.zeros((n+1))
 
             indices = [int(a)-1 for a in list(subset)] # indices are 1 less than the player tag
             binary_observation[indices] = 1
+            binary_observation[n] = loc+1
             binary_list.append(binary_observation)
 
         return binary_list
@@ -164,9 +166,8 @@ class CoopEnv(gym.Env):
 
         # Initialisation:
         # ------------------------------------------------------ #
-        random.seed() # reset the seed
         for player in range(self.n): # choose a random task for each agent
-
+            random.seed(player)# unique seed for each player
             chosen_task = random.randint(0, self.tasks-1) # pick a random coalition...
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
@@ -218,9 +219,8 @@ class CoopEnv(gym.Env):
 
         # Initialisation:
         # ------------------------------------------------------ #
-        random.seed() # reset the seed
         for player in range(self.n): # choose a random task for each agent
-
+            random.seed(player)# unique seed for each player
             chosen_task = random.randint(0, self.tasks-1) # pick a random coalition...
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
