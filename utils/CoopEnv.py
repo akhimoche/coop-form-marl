@@ -48,11 +48,10 @@ class CoopEnv(gym.Env):
 
             loc = locations[f'Player {i+1}']
             subset = CS[loc]
-            binary_observation = np.zeros((n+1))
+            binary_observation = np.zeros((n))
 
             indices = [int(a)-1 for a in list(subset)] # indices are 1 less than the player tag
             binary_observation[indices] = 1
-            binary_observation[n] = loc+1
             binary_list.append(binary_observation)
 
         return binary_list
