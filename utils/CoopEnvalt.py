@@ -30,7 +30,7 @@ class CoopEnv(gym.Env):
         return value
 
 
-    def get_observations_from_CS(self, CS, locations, n):
+    def get_observations_from_CS(self, CS, locations, n, tasks):
 
         """ Given a coalition structure, return ordered list of binary strings representing
             set observations for each agent (i.e what set the agent is in).
@@ -42,26 +42,27 @@ class CoopEnv(gym.Env):
 
         """
 
-        binary_list = []
+        states_list = []
 
         for i in range(n):
 
             loc = locations[f'Player {i+1}']
             subset = CS[loc]
-            binary_observation = np.zeros((n+1))
+            obs_vector = np.zeros((n+tasks))
 
-            indices = [int(a)-1 for a in list(subset)] # indices are 1 less than the player tag
-            binary_observation[indices] = 1
-            binary_observation[n] = loc
-            binary_list.append(binary_observation)
+            player_indices = [int(a)-1 for a in list(subset)] # indices are 1 less than the player tag
+            coalition_index = loc + n # the one hot vector is appended so +n as loc is already an index
+            obs_vector[player_indices] = 1
+            obs_vector[coalition_index] = 1
+            states_list.append(obs_vector)
 
-        return binary_list
+        return states_list
     # // -------------------- Game Support Methods -------------------- #
 
 
 
     # -------------------- Game Phase Execution Methods -------------------- # //
-    def movement_phase(self, CS, locations, n, actions):
+    def movement_phase(self, CS, locations, n, tasks, actions):
 
         for player in range(n): # action will be index of task to join
 
@@ -75,7 +76,7 @@ class CoopEnv(gym.Env):
             locations[f'Player {player + 1}'] = new_coalition # ... update locations
 
 
-        next_state = self.get_observations_from_CS(CS, locations, n)
+        next_state = self.get_observations_from_CS(CS, locations, n, tasks)
         return next_state
 
     def communication_phase(self, CS, singleton_vals, n, actions):
@@ -185,7 +186,7 @@ class CoopEnv(gym.Env):
                                   if not, then coalition gets 0 payoff as disagreement
         """
         # Movement Phase - first column is agent movement actions
-        next_state = self.movement_phase(self.CS, self.player_locations, self.n, actions[:,0])
+        next_state = self.movement_phase(self.CS, self.player_locations, self.n, self.tasks, actions[:,0])
 
         # Communication Phase
         comm_vals, char_vals, comm_tots = self.communication_phase(self.CS, self.singleton_vals, self.n, actions[:,1])
@@ -228,7 +229,7 @@ class CoopEnv(gym.Env):
             self.singleton_vals[f'Player {player + 1}'] = random.random() # ...and its value
         # ------------------------------------------------------ #
 
-        state = self.get_observations_from_CS(self.CS, self.player_locations, self.n)
+        state = self.get_observations_from_CS(self.CS, self.player_locations, self.n, self.tasks)
 
         return state
 
