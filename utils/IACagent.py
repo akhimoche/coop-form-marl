@@ -99,6 +99,10 @@ class Agent():
         #print(f' grads_move {grads_move}')
         grads_critic = tape.gradient(loss_critic, self.vModel.trainable_variables)
 
+        return grads_actor, grads_critic
 
-        self.aopt.apply_gradients(zip(grads_actor, self.aModel.trainable_variables))
-        self.vopt.apply_gradients(zip(grads_critic, self.vModel.trainable_variables))
+    def update(self, avg_actor_grad, avg_critic_grad):
+
+
+        self.aopt.apply_gradients(zip(avg_actor_grad, self.aModel.trainable_variables))
+        self.vopt.apply_gradients(zip(avg_critic_grad, self.vModel.trainable_variables))
