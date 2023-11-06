@@ -56,6 +56,7 @@ class Agent():
         self.vlr = 1e-4
         self.aopt = tf.keras.optimizers.Adam(learning_rate=self.alr)
         self.vopt = tf.keras.optimizers.Adam(learning_rate=self.vlr)
+        self.ent_coef = 0.1
 
     def choose_action(self, state):
         move_out, comm_out = self.aModel(np.array([state]))
@@ -93,7 +94,14 @@ class Agent():
             log_prob_comm = dist_comm.log_prob(action_comm)
             log_prob = log_prob_move + log_prob_comm
 
-            loss_actor = -log_prob * td
+            # Calculate entropy
+            entropy_move = tf.reduce_mean(dist_move.entropy())  # Entropy for the categorical distribution
+            entropy_comm = tf.reduce_mean(dist_comm.entropy())  # Entropy for the Gaussian distribution
+            entropy = entropy_move + entropy_comm
+
+            # Introduce entropy regularization term in the actor loss
+            loss_actor = -log_prob * td - self.ent_coef * entropy
+
 
         grads_actor = tape.gradient(loss_actor, self.aModel.trainable_variables)
         #print(f' grads_move {grads_move}')
