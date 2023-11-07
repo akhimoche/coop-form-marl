@@ -10,7 +10,7 @@ import numpy as np
 class CoopEnv(gym.Env):
 
     # -------------------- Game Support Methods -------------------- # //
-    def characteristic_function(self, coalition, singleton_vals, seed):
+    def characteristic_function(self, coalition, singleton_vals, seed, n):
 
         """ Return the characteristic value of a coalition
             Input: 'coalition' - Set of players present within a coalition of a coalition structure
@@ -24,6 +24,9 @@ class CoopEnv(gym.Env):
 
         if len(coalition) == 1: # ... but individual coalitions are always the singleton values
             bias = 1
+
+        if len(coalition) == n:
+            bias = 0
 
         value = sum(singleton_vals[f'Player {player}'] for player in coalition) * bias
 
@@ -97,7 +100,7 @@ class CoopEnv(gym.Env):
 
                 # characteristic value of the coalition
                 seed = task*n + len(coalition) # unique seed for task and coalition
-                char_value = self.characteristic_function(coalition, singleton_vals, seed)
+                char_value = self.characteristic_function(coalition, singleton_vals, seed, n)
                 char_vals.append(char_value)
 
                 # sum of the communicated values of players
