@@ -167,13 +167,13 @@ class CoopEnv(gym.Env):
 
         # Initialisation:
         # ------------------------------------------------------ #
-        random.seed() # reset the seed
         for player in range(self.n): # choose a random task for each agent
-
+            random.seed()
             chosen_task = random.randint(0, self.tasks-1) # pick a random coalition...
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
-            self.player_locations[f'Player {player + 1}'] = chosen_task # ... record index...
+            self.player_locations[f'Player {player + 1}'] = chosen_task # ... while recording the index...
+            random.seed(player)
             self.singleton_vals[f'Player {player + 1}'] = random.random() # ...and its value
         # ------------------------------------------------------ #
 
@@ -221,13 +221,13 @@ class CoopEnv(gym.Env):
 
         # Initialisation:
         # ------------------------------------------------------ #
-        random.seed() # reset the seed
         for player in range(self.n): # choose a random task for each agent
-
+            random.seed()
             chosen_task = random.randint(0, self.tasks-1) # pick a random coalition...
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
             self.player_locations[f'Player {player + 1}'] = chosen_task # ... while recording the index...
+            random.seed(player)
             self.singleton_vals[f'Player {player + 1}'] = random.random() # ...and its value
         # ------------------------------------------------------ #
 
