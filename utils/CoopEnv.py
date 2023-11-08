@@ -20,7 +20,7 @@ class CoopEnv(gym.Env):
         """
 
         random.seed(seed) # original seeds with a shift for variety
-        bias = random.uniform(0,len(coalition)) # not necessarily superadditive...
+        bias = random.uniform(0,3) # not necessarily superadditive...
 
         if len(coalition) == 1: # ... but individual coalitions are always the singleton values
             bias = 1
