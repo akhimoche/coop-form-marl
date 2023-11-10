@@ -20,13 +20,11 @@ class CoopEnv(gym.Env):
         """
 
         random.seed(seed) # original seeds with a shift for variety
-        bias = random.uniform(0,3) # not necessarily superadditive...
+        m_b_func = n*np.exp(-2*len(coalition)/n)
+        bias = random.uniform(0,m_b_func) # not necessarily superadditive...
 
         if len(coalition) == 1: # ... but individual coalitions are always the singleton values
             bias = 1
-
-        if len(coalition) == n:
-            bias = 0
 
         value = sum(singleton_vals[f'Player {player}'] for player in coalition) * bias
 
