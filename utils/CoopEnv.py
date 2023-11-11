@@ -56,9 +56,6 @@ class CoopEnv(gym.Env):
         if len(coalition) == 1: # ... but individual coalitions are always the singleton values
             bias = 1
 
-        if len(coalition) == self.n:
-            bias = 0
-
         value = sum([self.singleton_vals[f'Player {player}'] for player in coalition]) * bias
 
         return value
@@ -169,7 +166,7 @@ class CoopEnv(gym.Env):
             coal_val = char_vals[location] # value of the coalition the player is in
             comm_sum = comm_tots[location] # sum of singleton values of coalition
 
-            frac = (comm_val/comm_sum) + 0.1
+            frac = (comm_val/comm_sum)
 
             if frac > 1:
                 print("WARNING: Payoff fraction should not be greater than 1.")
