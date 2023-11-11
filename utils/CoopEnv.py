@@ -212,12 +212,12 @@ class CoopEnv(gym.Env):
         # ------------------------------------------------------ #
 
 
-    def reset(self, n, tasks, cnf=0.1):
+    def reset(self, n, num_of_tasks , cnf=0.1):
 
         # Numerical Parameters:
         # ------------------------------------------------------ #
         self.n = n
-        self.num_of_tasks = tasks
+        self.num_of_tasks = num_of_tasks
         self.done = False
         self.cnf = cnf # communication noise factor of singleton value
         # ------------------------------------------------------ #
