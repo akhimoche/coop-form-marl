@@ -96,7 +96,6 @@ class Agent():
             loss_actor = -log_prob * td
 
         grads_actor = tape.gradient(loss_actor, self.aModel.trainable_variables)
-        #print(f' grads_move {grads_move}')
         grads_critic = tape.gradient(loss_critic, self.vModel.trainable_variables)
 
 
