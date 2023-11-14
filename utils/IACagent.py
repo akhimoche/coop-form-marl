@@ -98,6 +98,10 @@ class Agent():
         grads_actor = tape.gradient(loss_actor, self.aModel.trainable_variables)
         grads_critic = tape.gradient(loss_critic, self.vModel.trainable_variables)
 
+        return grads_actor, grads_critic
+
+
+    def update(self, grads_actor, grads_critic):
 
         self.aopt.apply_gradients(zip(grads_actor, self.aModel.trainable_variables))
         self.vopt.apply_gradients(zip(grads_critic, self.vModel.trainable_variables))
