@@ -24,7 +24,7 @@ class Agent():
             x = self.layer1(x)
             x = self.layer2(x)
             move_out = self.mout(x)
-            comm_out = self.mout(x)
+            comm_out = self.cout(x)
 
             return move_out , comm_out
 
