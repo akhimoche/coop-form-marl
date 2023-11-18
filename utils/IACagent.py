@@ -28,6 +28,7 @@ class Agent():
 
             return move_out , comm_out
 
+
     class CriticNetwork(tf.keras.Model):
 
         def __init__(self):
@@ -63,8 +64,7 @@ class Agent():
         dist_move = tfp.distributions.Categorical(probs=move_out, dtype=tf.float32) # categorical dist
         action_move = dist_move.sample() # ... sampled to get movement action
 
-        comm_out = comm_out.numpy()[0]
-        dist_comm = tfp.distributions.Normal(loc=comm_out[0], scale=comm_out[1]) # gaussian dist
+        dist_comm = tfp.distributions.Normal(loc=comm_out[0][0], scale=tf.math.exp(comm_out[0][1])) # gaussian dist
         action_comm = dist_comm.sample() # ... sampled to get communication action
 
         return int(action_move.numpy()[0]), float(action_comm)
@@ -84,10 +84,9 @@ class Agent():
             # Calculate the log probabilities and losses for both action types
             move_out, comm_out = self.aModel(state, training=True)
             action_move, action_comm = action[0], action[1]
-            comm_out = comm_out.numpy()[0]
 
             dist_move = tfp.distributions.Categorical(probs=move_out, dtype=tf.float32)
-            dist_comm = tfp.distributions.Normal(loc=comm_out[0], scale=comm_out[1])
+            dist_comm = tfp.distributions.Normal(loc=comm_out[0][0], scale=tf.math.exp(comm_out[0][1]))
 
             log_prob_move = dist_move.log_prob(action_move)
             log_prob_comm = dist_comm.log_prob(action_comm)
