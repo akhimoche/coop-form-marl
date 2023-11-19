@@ -64,8 +64,10 @@ class Agent():
         dist_move = tfp.distributions.Categorical(probs=move_out, dtype=tf.float32) # categorical dist
         action_move = dist_move.sample() # ... sampled to get movement action
 
-        dist_comm = tfp.distributions.Normal(loc=comm_out[0][0], scale=tf.math.exp(comm_out[0][1])) # gaussian dist
+        dist_comm = tfp.distributions.Normal(loc=comm_out[0][0], scale=1e-3 + tf.math.exp(comm_out[0][1])) # gaussian dist
         action_comm = dist_comm.sample() # ... sampled to get communication action
+
+        action_comm = tf.clip_by_value(action_comm, clip_value_min=-0.5, clip_value_max=1)
 
         return int(action_move.numpy()[0]), float(action_comm)
 
@@ -86,7 +88,7 @@ class Agent():
             action_move, action_comm = action[0], action[1]
 
             dist_move = tfp.distributions.Categorical(probs=move_out, dtype=tf.float32)
-            dist_comm = tfp.distributions.Normal(loc=comm_out[0][0], scale=tf.math.exp(comm_out[0][1]))
+            dist_comm = tfp.distributions.Normal(loc=comm_out[0][0], scale=1e-3 + tf.math.exp(comm_out[0][1]))
 
             log_prob_move = dist_move.log_prob(action_move)
             log_prob_comm = dist_comm.log_prob(action_comm)
@@ -96,6 +98,14 @@ class Agent():
 
         grads_actor = tape.gradient(loss_actor, self.aModel.trainable_variables)
         grads_critic = tape.gradient(loss_critic, self.vModel.trainable_variables)
+
+        # numerical stability check
+        for grad in grads_actor:
+            if tf.math.reduce_any(tf.math.is_nan(grad)) or tf.math.reduce_any(tf.math.is_inf(grad)):
+                raise ValueError(f"NaNs or infs in actor gradient. Stopping training.")
+        for grad in grads_critic:
+            if tf.math.reduce_any(tf.math.is_nan(grad)) or tf.math.reduce_any(tf.math.is_inf(grad)):
+                raise ValueError(f"NaNs or infs in critic gradient. Stopping training.")
 
 
         self.aopt.apply_gradients(zip(grads_actor, self.aModel.trainable_variables))

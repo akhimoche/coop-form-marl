@@ -9,7 +9,7 @@ import numpy as np
 
 class CoopEnv(gym.Env):
 
-    def __init__(self, n, num_of_tasks, cnf=0.1):
+    def __init__(self, n, num_of_tasks):
 
 
         # Numerical Parameters:
@@ -96,6 +96,10 @@ class CoopEnv(gym.Env):
         for player in range(self.n): # action will be index of task to join
 
             new_coalition = int(actions[player]) # get new coalition index
+
+            if new_coalition >= self.num_of_tasks or new_coalition < 0:
+                raise ValueError(f'Agent {player+1} is selecting an invalid task: {task}. Stopping training.')
+
             current_coalition = self.player_locations[f'Player {player + 1}'] # old coalition index
 
             self.CS[current_coalition].remove(f'{player + 1}') # remove from old coalition...
@@ -116,7 +120,7 @@ class CoopEnv(gym.Env):
         for player in range(self.n):
 
             singleton_val = self.singleton_vals[f'Player {player + 1}']
-            noise = abs(actions[player])
+            noise = actions[player]
             comm_vals[f'Player {player + 1}'] = singleton_val * (1 + noise)
 
         # Get payoffs for coalitions from char func:
@@ -165,12 +169,13 @@ class CoopEnv(gym.Env):
             frac = comm_val/comm_sum
 
             if frac > 1:
-                #raise ValueError(f"Payoff fraction assigned to player cannot not be greater than 1. Actual fraction: {frac}")
                 print(self.CS)
                 print(f'comm val is {comm_val} and comm_sum is {comm_sum}')
                 print(comm_tots)
                 print(comm_vals)
                 print('\n')
+                raise ValueError(f"Payoff fraction assigned to player cannot not be greater than 1. Actual fraction: {frac}")
+
 
             payoff = frac * coal_val
             rewards[player] = payoff
@@ -213,7 +218,7 @@ class CoopEnv(gym.Env):
         # ------------------------------------------------------ #
 
 
-    def reset(self, n, num_of_tasks, cnf=0.1):
+    def reset(self, n, num_of_tasks):
 
         # Numerical Parameters:
         # ------------------------------------------------------ #
