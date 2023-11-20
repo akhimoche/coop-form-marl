@@ -9,14 +9,14 @@ class Agent():
 
     class ActorNetwork(tf.keras.Model):
 
-        def __init__(self, action_size_move):
+        def __init__(self, action_size_move, action_size_comm):
 
             super().__init__()
             # Shared layers for policy and value function networks
             self.layer1 = tf.keras.layers.Dense(256, activation = 'relu')
             self.layer2 = tf.keras.layers.Dense(256, activation = 'relu')
             self.mout = tf.keras.layers.Dense(action_size_move, activation = 'softmax') # state to action probabilities
-            self.cout = tf.keras.layers.Dense(2, activation = None) # state to mean, stddev for gaussian p.d. dist.
+            self.cout = tf.keras.layers.Dense(action_size_comm, activation = 'softmax') # state to mean, stddev for gaussian p.d. dist.
 
         def call(self, state):
 
@@ -26,7 +26,7 @@ class Agent():
             move_out = self.mout(x)
             comm_out = self.cout(x)
 
-            return move_out , comm_out
+            return move_out, comm_out
 
 
     class CriticNetwork(tf.keras.Model):
@@ -49,8 +49,8 @@ class Agent():
             return value
 
 
-    def __init__(self, action_size_move):
-        self.aModel = self.ActorNetwork(action_size_move)
+    def __init__(self, action_size_move, action_size_comm):
+        self.aModel = self.ActorNetwork(action_size_move, action_size_comm)
         self.vModel = self.CriticNetwork()
         self.gamma = 0.99
         self.alr = 1e-4
@@ -64,12 +64,10 @@ class Agent():
         dist_move = tfp.distributions.Categorical(probs=move_out, dtype=tf.float32) # categorical dist
         action_move = dist_move.sample() # ... sampled to get movement action
 
-        dist_comm = tfp.distributions.Normal(loc=comm_out[0][0], scale=1e-3 + tf.math.exp(comm_out[0][1])) # gaussian dist
-        action_comm = dist_comm.sample() # ... sampled to get communication action
+        dist_comm = tfp.distributions.Categorical(probs=comm_out, dtype=tf.float32) # categorical dist
+        action_comm = dist_comm.sample() # ... sampled to get comm action
 
-        action_comm = tf.clip_by_value(action_comm, clip_value_min=-0.5, clip_value_max=1)
-
-        return int(action_move.numpy()[0]), float(action_comm)
+        return int(action_move.numpy()[0]), int(action_comm.numpy()[0])
 
     def train(self, state, action, reward, next_state): # train from an episode of experience
 
@@ -88,7 +86,7 @@ class Agent():
             action_move, action_comm = action[0], action[1]
 
             dist_move = tfp.distributions.Categorical(probs=move_out, dtype=tf.float32)
-            dist_comm = tfp.distributions.Normal(loc=comm_out[0][0], scale=1e-3 + tf.math.exp(comm_out[0][1]))
+            dist_comm = tfp.distributions.Categorical(probs=comm_out, dtype=tf.float32) # categorical dist
 
             log_prob_move = dist_move.log_prob(action_move)
             log_prob_comm = dist_comm.log_prob(action_comm)
