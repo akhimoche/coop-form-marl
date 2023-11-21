@@ -195,7 +195,7 @@ class CoopEnv(gym.Env):
 
 
     # -------------------- Gym Methods -------------------- # //
-    def step(self, actions):
+    def step(self, action_move, action_comm):
 
         """ Three phases:
             Movement - Agents' chosen actions are applied to form a new CS.
@@ -204,10 +204,10 @@ class CoopEnv(gym.Env):
                                   if not, then coalition gets 0 payoff as disagreement
         """
         # Movement Phase
-        next_state = self.movement_phase(actions[:,0])
+        next_state = self.movement_phase(action_move)
 
         # Communication Phase
-        comm_vals, char_vals, comm_tots = self.communication_phase(actions[:,1])
+        comm_vals, char_vals, comm_tots = self.communication_phase(action_comm)
 
         # Payoff Distribution Phase
         rewards = self.payoff_dist_phase(comm_vals, char_vals, comm_tots)
