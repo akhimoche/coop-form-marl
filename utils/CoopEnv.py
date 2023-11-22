@@ -37,7 +37,7 @@ class CoopEnv(gym.Env):
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
             self.player_locations[f'Player {player + 1}'] = chosen_task # ... while recording the index...
-            #random.seed(player)
+            random.seed(player)
             self.singleton_vals[f'Player {player + 1}'] = random.random() # ...and its value
         # ------------------------------------------------------ #
 
@@ -239,7 +239,7 @@ class CoopEnv(gym.Env):
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
             self.player_locations[f'Player {player + 1}'] = chosen_task # ... while recording the index...
-            #random.seed(player)
+            random.seed(player)
             self.singleton_vals[f'Player {player + 1}'] = random.random() # ...and its value
         # ------------------------------------------------------ #
 
