@@ -121,7 +121,12 @@ class CoopEnv(gym.Env):
 
             singleton_val = self.singleton_vals[f'Player {player + 1}']
             noise = actions[player]
-            comm_vals[f'Player {player + 1}'] = singleton_val * (1 + noise)
+            comm_val = singleton_val * (1 + noise)
+
+            if comm_val <= 0:
+                return ValueError(f'The comm. val. for agent {player+1} is less than or equal to zero: {comm_val}')
+
+            comm_vals[f'Player {player + 1}'] = comm_val
 
         # Get payoffs for coalitions from char func:
         char_vals = np.zeros((self.num_of_tasks))
