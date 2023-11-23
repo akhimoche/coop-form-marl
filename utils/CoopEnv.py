@@ -37,7 +37,7 @@ class CoopEnv(gym.Env):
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
             self.player_locations[f'Player {player + 1}'] = chosen_task # ... while recording the index...
-            #random.seed(player)
+            random.seed(player)
             self.singleton_vals[f'Player {player + 1}'] = random.random() # ...and its value
         # ------------------------------------------------------ #
 
@@ -51,7 +51,7 @@ class CoopEnv(gym.Env):
         """
 
         random.seed(seed) # original seeds with a shift for variety
-        bias = random.uniform(0,2) # not necessarily superadditive...
+        bias = random.uniform(0,3) # not necessarily superadditive...
 
         if len(coalition) == 1: # ... but individual coalitions are always the singleton values
             bias = 1
@@ -239,7 +239,7 @@ class CoopEnv(gym.Env):
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
             self.player_locations[f'Player {player + 1}'] = chosen_task # ... while recording the index...
-            #random.seed(player)
+            random.seed(player)
             self.singleton_vals[f'Player {player + 1}'] = random.random() # ...and its value
         # ------------------------------------------------------ #
 
