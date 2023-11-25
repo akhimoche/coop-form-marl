@@ -9,7 +9,7 @@ import numpy as np
 
 class CoopEnv(gym.Env):
 
-    def __init__(self, n, num_of_tasks, cnf=0.1):
+    def __init__(self, n, num_of_tasks):
 
 
         # Numerical Parameters:
@@ -74,11 +74,13 @@ class CoopEnv(gym.Env):
 
         for i in range(self.n):
 
-            coalition = self.CS[self.player_locations[f'Player {i+1}']] # get the coalition that player i is in
-
-            binary_observation = np.zeros((self.n)) # prepare an observation array
+            task = self.player_locations[f'Player {i+1}']
+            coalition = self.CS[task] # get the coalition that player i is in
             indices = [int(a)-1 for a in list(coalition)] # get indices of all players in coalition (tag is 1 more than index)
+
+            binary_observation = np.zeros((self.n+self.num_of_tasks)) # prepare an observation array
             binary_observation[indices] = 1 # set indices to 1 to indicate present
+            binary_observation[self.n+task] = 1
 
             agent_observations.append(binary_observation)
 
@@ -96,6 +98,10 @@ class CoopEnv(gym.Env):
         for player in range(self.n): # action will be index of task to join
 
             new_coalition = int(actions[player]) # get new coalition index
+
+            if new_coalition >= self.num_of_tasks or new_coalition < 0:
+                raise ValueError(f'Agent {player+1} is selecting an invalid task: {task}. Stopping training.')
+
             current_coalition = self.player_locations[f'Player {player + 1}'] # old coalition index
 
             self.CS[current_coalition].remove(f'{player + 1}') # remove from old coalition...
@@ -116,8 +122,13 @@ class CoopEnv(gym.Env):
         for player in range(self.n):
 
             singleton_val = self.singleton_vals[f'Player {player + 1}']
-            noise = abs(actions[player])
-            comm_vals[f'Player {player + 1}'] = singleton_val * (1 + noise)
+            noise = actions[player]
+            comm_val = singleton_val * (1 + noise)
+
+            if comm_val <= 0:
+                return ValueError(f'The comm. val. for agent {player+1} is less than or equal to zero: {comm_val}')
+
+            comm_vals[f'Player {player + 1}'] = comm_val
 
         # Get payoffs for coalitions from char func:
         char_vals = np.zeros((self.num_of_tasks))
@@ -165,20 +176,21 @@ class CoopEnv(gym.Env):
             frac = comm_val/comm_sum
 
             if frac > 1:
-                #raise ValueError(f"Payoff fraction assigned to player cannot not be greater than 1. Actual fraction: {frac}")
                 print(self.CS)
                 print(f'comm val is {comm_val} and comm_sum is {comm_sum}')
                 print(comm_tots)
                 print(comm_vals)
                 print('\n')
+                raise ValueError(f"Payoff fraction assigned to player cannot not be greater than 1. Actual fraction: {frac}")
+
 
             payoff = frac * coal_val
             rewards[player] = payoff
 
-            # check stability with individual rationality
+            # check individual rationality for agent
             if payoff < singleton_val:
-
-                # all players in same coalition get 0 reward
+                # If check fails then all players
+                # in same coalition get 0 reward
                 coalition = self.CS[task]
                 indices = [int(s)-1 for s in coalition]
                 rewards[indices] = 0
@@ -190,7 +202,7 @@ class CoopEnv(gym.Env):
 
 
     # -------------------- Gym Methods -------------------- # //
-    def step(self, actions):
+    def step(self, action_move, action_comm):
 
         """ Three phases:
             Movement - Agents' chosen actions are applied to form a new CS.
@@ -199,10 +211,10 @@ class CoopEnv(gym.Env):
                                   if not, then coalition gets 0 payoff as disagreement
         """
         # Movement Phase
-        next_state = self.movement_phase(actions[:,0])
+        next_state = self.movement_phase(action_move)
 
         # Communication Phase
-        comm_vals, char_vals, comm_tots = self.communication_phase(actions[:,1])
+        comm_vals, char_vals, comm_tots = self.communication_phase(action_comm)
 
         # Payoff Distribution Phase
         rewards = self.payoff_dist_phase(comm_vals, char_vals, comm_tots)
@@ -213,7 +225,7 @@ class CoopEnv(gym.Env):
         # ------------------------------------------------------ #
 
 
-    def reset(self, n, num_of_tasks, cnf=0.1):
+    def reset(self, n, num_of_tasks):
 
         # Numerical Parameters:
         # ------------------------------------------------------ #
