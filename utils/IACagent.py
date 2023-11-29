@@ -92,7 +92,6 @@ class Agent():
             log_prob_comm = dist_comm.log_prob(action_comm)
             log_prob = log_prob_move + log_prob_comm
 
-            # Introduce entropy regularization term in the actor loss
             loss_actor = -log_prob * td
 
         grads_actor = tape.gradient(loss_actor, self.aModel.trainable_variables)
@@ -101,19 +100,11 @@ class Agent():
         # numerical stability check
         for grad in grads_actor:
             if tf.math.reduce_any(tf.math.is_nan(grad)) or tf.math.reduce_any(tf.math.is_inf(grad)):
-                print(td)
-                print(loss_critic)
-                print(log_prob_move)
-                print(log_prob_comm)
-                print(log_prob)
-                print(loss_actor)
                 raise ValueError(f"NaNs or infs in actor gradient. Stopping training.")
         for grad in grads_critic:
             if tf.math.reduce_any(tf.math.is_nan(grad)) or tf.math.reduce_any(tf.math.is_inf(grad)):
                 raise ValueError(f"NaNs or infs in critic gradient. Stopping training.")
 
-        return grads_actor, grads_critic
 
-    def update(self, grads_actor, grads_critic):
         self.aopt.apply_gradients(zip(grads_actor, self.aModel.trainable_variables))
         self.vopt.apply_gradients(zip(grads_critic, self.vModel.trainable_variables))
