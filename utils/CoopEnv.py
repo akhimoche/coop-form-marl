@@ -25,6 +25,7 @@ class CoopEnv(gym.Env):
         self.CS = [set() for i in range(1, self.num_of_tasks + 1)] # starting coalition structure
         self.player_locations = {} # track the location of each agent in the coalition structure
         self.singleton_vals = {}
+        self.happiness = {}
         # ------------------------------------------------------ #
 
 
@@ -36,6 +37,7 @@ class CoopEnv(gym.Env):
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
             self.player_locations[f'Player {player + 1}'] = chosen_task # ... while recording the index...
+            self.happiness[f'Player {player + 1}'] = 0
             random.seed(player)
             self.singleton_vals[f'Player {player + 1}'] = random.random() # ...and its value
         # ------------------------------------------------------ #
@@ -78,8 +80,9 @@ class CoopEnv(gym.Env):
             coalition = self.CS[task] # get the coalition that player i is in
             indices = [int(a)-1 for a in list(coalition)] # get indices of all players in coalition (tag is 1 more than index)
 
-            binary_observation = np.zeros((self.n)) # prepare an observation array
+            binary_observation = np.zeros((self.n+1)) # prepare an observation array
             binary_observation[indices] = 1 # set indices to 1 to indicate present
+            binary_observation[self.n] = self.happiness[f'Player {i+1}']
 
             agent_observations.append(binary_observation)
 
@@ -186,15 +189,19 @@ class CoopEnv(gym.Env):
             payoff = frac * coal_val
             rewards[player] = payoff
 
+            self.happiness[f'Player {player+1}'] = payoff - singleton_val
             # check individual rationality for agent
             if payoff < singleton_val:
                 # If check fails then all players
                 # in same coalition get 0 reward
+                self.happiness[f'Player {player+1}'] = 0
                 coalition = self.CS[task]
                 indices = [int(s)-1 for s in coalition]
                 rewards[indices] = 0
 
-        return rewards
+        next_state = self.get_observations_from_CS()
+
+        return rewards, next_state
     # // -------------------- Game Phase Execution Methods -------------------- #
 
 
@@ -216,7 +223,7 @@ class CoopEnv(gym.Env):
         comm_vals, char_vals, comm_tots = self.communication_phase(action_comm)
 
         # Payoff Distribution Phase
-        rewards = self.payoff_dist_phase(comm_vals, char_vals, comm_tots)
+        rewards, next_state = self.payoff_dist_phase(comm_vals, char_vals, comm_tots)
 
         info = []
         # compile next_state, reward, done, info and return
@@ -239,6 +246,7 @@ class CoopEnv(gym.Env):
         self.CS = [set() for i in range(1, self.num_of_tasks + 1)] # starting coalition structure
         self.player_locations = {} # track the location of each agent in the coalition structure
         self.singleton_vals = {}
+        self.happiness = {}
         # ------------------------------------------------------ #
 
 
@@ -250,6 +258,7 @@ class CoopEnv(gym.Env):
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
             self.player_locations[f'Player {player + 1}'] = chosen_task # ... while recording the index...
+            self.happiness[f'Player {player + 1}'] = 0
             random.seed(player)
             self.singleton_vals[f'Player {player + 1}'] = random.random() # ...and its value
         # ------------------------------------------------------ #
