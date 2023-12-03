@@ -81,10 +81,12 @@ class CoopEnv(gym.Env):
 
         for i in range(self.n):
 
-            coalition = self.CS[self.player_locations[f'Player {i+1}']] # get the coalition that player i is in
+            task = self.player_locations[f'Player {i+1}']
+            coalition = self.CS[task] # get the coalition that player i is in
 
             binary_observation = np.zeros((self.n)) # prepare an observation array
             indices = [int(a)-1 for a in list(coalition)] # get indices of all players in coalition (tag is 1 more than index)
+
             binary_observation[indices] = 1 # set indices to 1 to indicate present
 
             agent_observations.append(binary_observation)
