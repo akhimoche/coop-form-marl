@@ -50,14 +50,14 @@ class CoopEnv(gym.Env):
 
         """
 
-        a = self.n/3
+        a = self.n
         b = self.n/2
         c = self.n/5
         x = len(coalition)
         func_val = a*np.exp( -(x-b)**2 / (2*c**2)) # not necessarily superadditive...
 
         random.seed(seed) # original seeds with a shift for variety
-        bias = random.uniform(func_val/3, func_val)
+        bias = random.uniform(func_val, func_val+self.n*0.2)
 
         if len(coalition) == 1: # ... but individual coalitions are always the singleton values
             bias = 1

@@ -1,0 +1,1 @@
+Converged VNM stable coalition structure is: [{'8', '4', '2', '6', '9'}, set(), {'5', '7', '10', '1', '3'}, set(), set()]
