@@ -124,7 +124,7 @@ class CoopEnv(gym.Env):
             comm_val = singleton_val * (1 + noise)
 
             if comm_val <= 0:
-                return ValueError(f'The comm. val. for agent {player+1} is less than or equal to zero: {comm_val}')
+                raise ValueError(f'The comm. val. for agent {player+1} is less than or equal to zero: {comm_val}')
 
             comm_vals[f'Player {player + 1}'] = comm_val
 
