@@ -13,6 +13,9 @@ class Agent2:
         # Select arm with the maximum UCB value
         ucb_values = self.values + np.sqrt(2 * np.log(sum(self.counts)) / (self.counts+1e-5 ))
         chosen_arm = np.argmax(ucb_values)
+
+        if sum(self.values) == 0:
+            chosen_arm = random.randint(0,self.num_arms-1)
         return chosen_arm, 0
 
     def update(self, arm, reward):
