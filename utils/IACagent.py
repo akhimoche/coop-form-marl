@@ -15,7 +15,7 @@ class Agent():
             # Shared layers for policy and value function networks
             self.layer1 = tf.keras.layers.Dense(256, activation = 'relu')
             self.layer2 = tf.keras.layers.Dense(256, activation = 'relu')
-            self.pout = tf.keras.layers.Dense(action_size, activation = 'softmax') # state to action probabilities
+            self.pout = tf.keras.layers.Dense(3, activation = 'softmax') # state to action probabilities
 
         def call(self, state):
 
@@ -50,7 +50,7 @@ class Agent():
         self.vModel = self.CriticNetwork()
         self.gamma = 0.99
         self.alr = 1e-4
-        self.clr = 1e-4
+        self.clr = 5e-4
         self.aopt = tf.keras.optimizers.Adam(learning_rate=self.alr)
         self.copt = tf.keras.optimizers.Adam(learning_rate=self.clr)
 

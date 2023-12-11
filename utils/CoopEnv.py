@@ -37,8 +37,7 @@ class CoopEnv(gym.Env):
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
             self.player_locations[f'Player {player + 1}'] = chosen_task # ... while recording the index...
-            random.seed(player)
-            self.singleton_vals[f'Player {player + 1}'] = random.random() # ...and its value
+            self.singleton_vals[f'Player {player + 1}'] = 1 # ...and its value
         # ------------------------------------------------------ #
 
     # -------------------- Game Support Methods -------------------- # //
@@ -82,12 +81,14 @@ class CoopEnv(gym.Env):
         for i in range(self.n):
 
             task = self.player_locations[f'Player {i+1}']
-            coalition = self.CS[task] # get the coalition that player i is in
+            current_coalition = self.CS[task] # get the coalition that player i is in
 
-            binary_observation = np.zeros((self.n)) # prepare an observation array
-            indices = [int(a)-1 for a in list(coalition)] # get indices of all players in coalition (tag is 1 more than index)
+            binary_observation = np.zeros((4)) # prepare an observation array
 
-            binary_observation[indices] = 1 # set indices to 1 to indicate present
+            binary_observation[0] = len(current_coalition) # current coalition size
+            binary_observation[1] = len(self.CS[(task-1+self.num_of_tasks)%self.num_of_tasks]) # left coalition size
+            binary_observation[2] = len(self.CS[(task+1+self.num_of_tasks)%self.num_of_tasks]) # right coalition size
+            binary_observation[3] = task # task number
 
             agent_observations.append(binary_observation)
 
@@ -102,9 +103,19 @@ class CoopEnv(gym.Env):
 
         for player in range(self.n): # action will be index of task to join
 
-            new_coalition = actions[player] # get new coalition index
             current_coalition = self.player_locations[f'Player {player + 1}'] # old coalition index
 
+            # discern move (PBC)
+            if actions[player] == 0: # hold position
+                continue
+
+            if actions[player] == 1: # move to left vertex
+                new_coalition =  (current_coalition-1+self.num_of_tasks)%self.num_of_tasks
+
+            if actions[player] == 2: # move to right vertex
+                new_coalition = (current_coalition+1+self.num_of_tasks)%self.num_of_tasks
+
+            # perform move
             self.CS[current_coalition].remove(f'{player + 1}') # remove from old coalition...
             self.CS[new_coalition].add(f'{player + 1}') # add player to new coalition...
 
@@ -247,8 +258,7 @@ class CoopEnv(gym.Env):
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
             self.player_locations[f'Player {player + 1}'] = chosen_task # ... while recording the index...
-            random.seed(player)
-            self.singleton_vals[f'Player {player + 1}'] = random.random() # ...and its value
+            self.singleton_vals[f'Player {player + 1}'] = 1 # ...and its value
         # ------------------------------------------------------ #
 
         state = self.get_observations_from_CS()
