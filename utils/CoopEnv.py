@@ -36,8 +36,7 @@ class CoopEnv(gym.Env):
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
             self.player_locations[f'Player {player + 1}'] = chosen_task # ... while recording the index...
-            random.seed(player)
-            self.singleton_vals[f'Player {player + 1}'] = random.random() # ...and its value
+            self.singleton_vals[f'Player {player + 1}'] = 1 # ...and its value
         # ------------------------------------------------------ #
 
     # -------------------- Game Support Methods -------------------- # //
@@ -80,11 +79,17 @@ class CoopEnv(gym.Env):
 
         for i in range(self.n):
 
-            coalition = self.CS[self.player_locations[f'Player {i+1}']] # get the coalition that player i is in
+            task = self.player_locations[f'Player {i+1}']
+            current_coalition = self.CS[task] # get the coalition that player i is in
 
-            binary_observation = np.zeros((self.n)) # prepare an observation array
-            indices = [int(a)-1 for a in list(coalition)] # get indices of all players in coalition (tag is 1 more than index)
+            binary_observation = np.zeros((4+self.n)) # prepare an observation array
+            indices = [int(a)-1+4 for a in list(current_coalition)] # get indices of all players in coalition (tag is 1 more than index)
             binary_observation[indices] = 1 # set indices to 1 to indicate present
+
+            binary_observation[0] = len(current_coalition) # current coalition size
+            binary_observation[1] = len(self.CS[(task-1+self.num_of_tasks)%self.num_of_tasks]) # left coalition size
+            binary_observation[2] = len(self.CS[(task+1+self.num_of_tasks)%self.num_of_tasks]) # right coalition size
+            binary_observation[3] = task # task number
 
             agent_observations.append(binary_observation)
 
@@ -97,17 +102,24 @@ class CoopEnv(gym.Env):
     # -------------------- Game Phase Execution Methods -------------------- # //
     def movement_phase(self, actions):
 
-        actions = actions.flatten() # flatten to 1D array
-
         for player in range(self.n): # action will be index of task to join
 
-            new_coalition = int(actions[player]) # get new coalition index
+            current_coalition = self.player_locations[f'Player {player + 1}'] # old coalition index
+
+            # discern move (PBC)
+            if actions[player] == 0: # hold position
+                continue
+
+            if actions[player] == 1: # move to left vertex
+                new_coalition =  (current_coalition-1+self.num_of_tasks)%self.num_of_tasks
+
+            if actions[player] == 2: # move to right vertex
+                new_coalition = (current_coalition+1+self.num_of_tasks)%self.num_of_tasks
 
             if new_coalition >= self.num_of_tasks or new_coalition < 0:
                 raise ValueError(f'Agent {player+1} is selecting an invalid task: {task}. Stopping training.')
 
-            current_coalition = self.player_locations[f'Player {player + 1}'] # old coalition index
-
+            # perform move
             self.CS[current_coalition].remove(f'{player + 1}') # remove from old coalition...
             self.CS[new_coalition].add(f'{player + 1}') # add player to new coalition...
 
@@ -120,9 +132,8 @@ class CoopEnv(gym.Env):
 
     def communication_phase(self, actions):
 
-        actions = actions.flatten() # flatten to 1D array
-
         comm_vals = {}
+        random.seed() # reset the seed for random communication noise (temporary)
         for player in range(self.n):
 
             singleton_val = self.singleton_vals[f'Player {player + 1}']
@@ -130,13 +141,17 @@ class CoopEnv(gym.Env):
             comm_val = singleton_val * (1 + noise)
 
             if comm_val <= 0:
-                return ValueError(f'The comm. val. for agent {player+1} is less than or equal to zero: {comm_val}')
+                raise ValueError(f'WARNING: The comm. val. for agent {player+1} is less than or equal to zero: {comm_val}')
 
             comm_vals[f'Player {player + 1}'] = comm_val
 
         # Get payoffs for coalitions from char func:
         char_vals = np.zeros((self.num_of_tasks))
         comm_tots = np.zeros((self.num_of_tasks))
+
+        #print(f'svals {self.singleton_vals}')
+        #print(f'commvals {comm_vals}')
+        #print(self.CS)
 
         for task in range(self.num_of_tasks):
 
@@ -159,6 +174,8 @@ class CoopEnv(gym.Env):
                 char_vals[task] = 0
                 comm_tots[task] = 0
 
+        #print(f'charvals {char_vals}')
+        #print(f'commtots {comm_tots}')
 
 
         return comm_vals, char_vals, comm_tots
@@ -169,24 +186,18 @@ class CoopEnv(gym.Env):
         for player in range(self.n): # determine how payoff be divided for players in coalitions
 
             # global values #
-            task = self.player_locations[f'Player {player + 1}'] # player location (task index in CS)
+            location = self.player_locations[f'Player {player + 1}'] # player location (task index in CS)
             singleton_val = self.singleton_vals[f'Player {player + 1}'] # player singleton value
 
             # local values #
             comm_val = comm_vals[f'Player {player + 1}'] # communicated s. value
-            coal_val = char_vals[task] # value of the coalition the player is in
-            comm_sum = comm_tots[task] # sum of singleton values of coalition
+            coal_val = char_vals[location] # value of the coalition the player is in
+            comm_sum = comm_tots[location] # sum of singleton values of coalition
 
-            frac = comm_val/comm_sum
+            frac = (comm_val/comm_sum)
 
             if frac > 1:
-                print(self.CS)
-                print(f'comm val is {comm_val} and comm_sum is {comm_sum}')
-                print(comm_tots)
-                print(comm_vals)
-                print('\n')
-                raise ValueError(f"Payoff fraction assigned to player cannot not be greater than 1. Actual fraction: {frac}")
-
+                raise ValueError("WARNING: Payoff fraction should not be greater than 1.")
 
             payoff = frac * coal_val
             rewards[player] = payoff
@@ -195,7 +206,7 @@ class CoopEnv(gym.Env):
             if payoff < singleton_val:
 
                 # all players in same coalition get 0 reward
-                coalition = self.CS[task]
+                coalition = self.CS[location]
                 indices = [int(s)-1 for s in coalition]
                 rewards[indices] = 0
 
@@ -255,8 +266,7 @@ class CoopEnv(gym.Env):
             self.CS[chosen_task].add(f'{player +1 }') # ... and add the player to it...
 
             self.player_locations[f'Player {player + 1}'] = chosen_task # ... while recording the index...
-            random.seed(player)
-            self.singleton_vals[f'Player {player + 1}'] = random.random() # ...and its value
+            self.singleton_vals[f'Player {player + 1}'] = 1 # ...and its value
         # ------------------------------------------------------ #
 
         state = self.get_observations_from_CS()
@@ -265,12 +275,4 @@ class CoopEnv(gym.Env):
 
     def render(self):
         pass
-
-
-
-
-
-
-
-
-
+    # // -------------------- Gym Methods -------------------- #

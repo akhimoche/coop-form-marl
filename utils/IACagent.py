@@ -9,13 +9,13 @@ class Agent():
 
     class ActorNetwork(tf.keras.Model):
 
-        def __init__(self, action_size_move, action_size_comm):
+        def __init__(self, action_size_comm):
 
             super().__init__()
             # Shared layers for policy and value function networks
             self.layer1 = tf.keras.layers.Dense(256, activation = 'relu')
             self.layer2 = tf.keras.layers.Dense(256, activation = 'relu')
-            self.mout = tf.keras.layers.Dense(action_size_move, activation = 'softmax') # state to action probabilities
+            self.mout = tf.keras.layers.Dense(3, activation = 'softmax') # state to action probabilities
             self.cout = tf.keras.layers.Dense(action_size_comm, activation = 'softmax') # state to mean, stddev for gaussian p.d. dist.
 
         def call(self, state):
@@ -49,12 +49,12 @@ class Agent():
             return value
 
 
-    def __init__(self, action_size_move, action_size_comm):
-        self.aModel = self.ActorNetwork(action_size_move, action_size_comm)
+    def __init__(self, action_size_comm):
+        self.aModel = self.ActorNetwork(action_size_comm)
         self.vModel = self.CriticNetwork()
         self.gamma = 0.99
         self.alr = 1e-4
-        self.vlr = 1e-4
+        self.vlr = 5e-4
         self.aopt = tf.keras.optimizers.Adam(learning_rate=self.alr)
         self.vopt = tf.keras.optimizers.Adam(learning_rate=self.vlr)
 
