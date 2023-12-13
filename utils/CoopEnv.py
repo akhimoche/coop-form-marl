@@ -86,10 +86,10 @@ class CoopEnv(gym.Env):
             indices = [int(a)-1+4 for a in list(current_coalition)] # get indices of all players in coalition (tag is 1 more than index)
             binary_observation[indices] = 1 # set indices to 1 to indicate present
 
-            binary_observation[0] = len(current_coalition) # current coalition size
-            binary_observation[1] = len(self.CS[(task-1+self.num_of_tasks)%self.num_of_tasks]) # left coalition size
-            binary_observation[2] = len(self.CS[(task+1+self.num_of_tasks)%self.num_of_tasks]) # right coalition size
-            binary_observation[3] = task # task number
+            binary_observation[0] = len(current_coalition)/self.n # current coalition size
+            binary_observation[1] = len(self.CS[(task-1+self.num_of_tasks)%self.num_of_tasks])/self.n # left coalition size
+            binary_observation[2] = len(self.CS[(task+1+self.num_of_tasks)%self.num_of_tasks])/self.n # right coalition size
+            binary_observation[3] = task/self.num_of_tasks # task number
 
             agent_observations.append(binary_observation)
 

@@ -53,7 +53,7 @@ class Agent():
         self.aModel = self.ActorNetwork(action_size_comm)
         self.vModel = self.CriticNetwork()
         self.gamma = 0.99
-        self.alr = 1e-4
+        self.alr = 2e-4
         self.vlr = 5e-4
         self.aopt = tf.keras.optimizers.Adam(learning_rate=self.alr)
         self.vopt = tf.keras.optimizers.Adam(learning_rate=self.vlr)
