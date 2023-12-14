@@ -49,12 +49,13 @@ class Agent():
             return value
 
 
-    def __init__(self, action_size_comm):
+    def __init__(self, action_size_comm, alr, vlr):
         self.aModel = self.ActorNetwork(action_size_comm)
         self.vModel = self.CriticNetwork()
         self.gamma = 0.99
-        self.alr = 2e-4
-        self.vlr = 5e-4
+        self.alr = alr
+        self.vlr = vlr
+        self.ent_coef = 0.1
         self.aopt = tf.keras.optimizers.Adam(learning_rate=self.alr)
         self.vopt = tf.keras.optimizers.Adam(learning_rate=self.vlr)
 
@@ -88,11 +89,15 @@ class Agent():
             dist_move = tfp.distributions.Categorical(probs=move_out, dtype=tf.float32)
             dist_comm = tfp.distributions.Categorical(probs=comm_out, dtype=tf.float32) # categorical dist
 
+            ent_move = dist_move.entropy()
+            ent_comm = dist_comm.entropy()
+            ent = ent_move+ent_comm
+
             log_prob_move = dist_move.log_prob(action_move)
             log_prob_comm = dist_comm.log_prob(action_comm)
             log_prob = log_prob_move + log_prob_comm
 
-            loss_actor = -log_prob * td
+            loss_actor = -log_prob * td - ent * self.ent_coef
 
         grads_actor = tape.gradient(loss_actor, self.aModel.trainable_variables)
         grads_critic = tape.gradient(loss_critic, self.vModel.trainable_variables)

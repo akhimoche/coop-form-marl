@@ -52,7 +52,7 @@ class CoopEnv(gym.Env):
         b = self.n/2
         c = self.n/5
         x = len(coalition)
-        func_val = a*np.exp( -(x-b)**2 / (2*c**2)) # not necessarily superadditive...
+        func_val = a*np.exp( -((x-b)**2) / (2*c**2)) # not necessarily superadditive...
 
         random.seed(seed) # original seeds with a shift for variety
         bias = random.uniform(func_val*0.8, func_val*1.2)
