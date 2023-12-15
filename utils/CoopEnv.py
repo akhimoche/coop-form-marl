@@ -16,7 +16,6 @@ class CoopEnv(gym.Env):
         # ------------------------------------------------------ #
         self.n = n
         self.num_of_tasks = num_of_tasks
-        self.done = False
         # ------------------------------------------------------ #
 
 
@@ -65,7 +64,7 @@ class CoopEnv(gym.Env):
         return value
 
 
-    def get_observations_from_CS(self):
+    def get_move_observations_from_CS(self):
 
         """ Given a coalition structure, return ordered list of binary strings representing
             set observations for each agent (i.e what set the agent is in).
@@ -82,14 +81,37 @@ class CoopEnv(gym.Env):
             task = self.player_locations[f'Player {i+1}']
             current_coalition = self.CS[task] # get the coalition that player i is in
 
-            binary_observation = np.zeros((4+self.n)) # prepare an observation array
-            indices = [int(a)-1+4 for a in list(current_coalition)] # get indices of all players in coalition (tag is 1 more than index)
-            binary_observation[indices] = 1 # set indices to 1 to indicate present
+            binary_observation = np.zeros((4)) # prepare an observation array
 
-            binary_observation[0] = len(current_coalition)/self.n # current coalition size
-            binary_observation[1] = len(self.CS[(task-1+self.num_of_tasks)%self.num_of_tasks])/self.n # left coalition size
-            binary_observation[2] = len(self.CS[(task+1+self.num_of_tasks)%self.num_of_tasks])/self.n # right coalition size
-            binary_observation[3] = task/self.num_of_tasks # task number
+            binary_observation[0] = len(current_coalition) # current coalition size
+            binary_observation[1] = len(self.CS[(task-1+self.num_of_tasks)%self.num_of_tasks]) # left coalition size
+            binary_observation[2] = len(self.CS[(task+1+self.num_of_tasks)%self.num_of_tasks]) # right coalition size
+            binary_observation[3] = task # task number
+
+            agent_observations.append(binary_observation)
+
+        return agent_observations
+
+    def get_comm_observations_from_CS(self):
+
+        """ Given a coalition structure, return ordered list of binary strings representing
+            set observations for each agent (i.e what set the agent is in).
+
+            Output: 'binary_list' - List of arrays containing binary string representation of
+                                    each observed set as observed by each agent.
+
+        """
+
+        agent_observations = []
+
+        for i in range(self.n):
+
+            task = self.player_locations[f'Player {i+1}']
+            current_coalition = self.CS[task] # get the coalition that player i is in
+
+            binary_observation = np.zeros((self.n)) # prepare an observation array
+            indices = [int(a)-1 for a in list(current_coalition)] # get indices of all players in coalition (tag is 1 more than index)
+            binary_observation[indices] = 1 # set indices to 1 to indicate present
 
             agent_observations.append(binary_observation)
 
@@ -127,8 +149,10 @@ class CoopEnv(gym.Env):
             self.player_locations[f'Player {player + 1}'] = new_coalition # ... update locations
 
 
-        next_state = self.get_observations_from_CS()
-        return next_state
+        next_state = self.get_move_observations_from_CS()
+        context = self.get_comm_observations_from_CS()
+
+        return next_state, context
 
     def communication_phase(self, actions):
 
@@ -217,16 +241,24 @@ class CoopEnv(gym.Env):
 
 
     # -------------------- Gym Methods -------------------- # //
-    def step(self, action_move, action_comm):
+    def step1(self, action_move):
 
-        """ Three phases:
+        """
             Movement - Agents' chosen actions are applied to form a new CS.
+        """
+        # Movement Phase
+        next_state, context = self.movement_phase(action_move)
+
+        return next_state, context
+        # ------------------------------------------------------ #
+
+    def step2(self, action_comm):
+
+        """
             Communication - Agents communicate their singleton values to coalition peers
             Payoff Distribution - assign payoff and check i.r satisfied for all players
                                   if not, then coalition gets 0 payoff as disagreement
         """
-        # Movement Phase
-        next_state = self.movement_phase(action_move)
 
         # Communication Phase
         comm_vals, char_vals, comm_tots = self.communication_phase(action_comm)
@@ -236,8 +268,9 @@ class CoopEnv(gym.Env):
 
         info = []
         # compile next_state, reward, done, info and return
-        return next_state, rewards, self.done, info
+        return rewards
         # ------------------------------------------------------ #
+
 
 
     def reset(self, n, num_of_tasks):
@@ -246,7 +279,6 @@ class CoopEnv(gym.Env):
         # ------------------------------------------------------ #
         self.n = n
         self.num_of_tasks = num_of_tasks
-        self.done = False
         # ------------------------------------------------------ #
 
 
@@ -269,7 +301,7 @@ class CoopEnv(gym.Env):
             self.singleton_vals[f'Player {player + 1}'] = 1 # ...and its value
         # ------------------------------------------------------ #
 
-        state = self.get_observations_from_CS()
+        state = self.get_move_observations_from_CS()
 
         return state
 
