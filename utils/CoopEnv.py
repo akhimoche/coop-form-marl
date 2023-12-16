@@ -83,10 +83,10 @@ class CoopEnv(gym.Env):
 
             binary_observation = np.zeros((4)) # prepare an observation array
 
-            binary_observation[0] = len(current_coalition) # current coalition size
-            binary_observation[1] = len(self.CS[(task-1+self.num_of_tasks)%self.num_of_tasks]) # left coalition size
-            binary_observation[2] = len(self.CS[(task+1+self.num_of_tasks)%self.num_of_tasks]) # right coalition size
-            binary_observation[3] = task # task number
+            binary_observation[0] = len(current_coalition)/self.n # current coalition size
+            binary_observation[1] = len(self.CS[(task-1+self.num_of_tasks)%self.num_of_tasks])/self.n # left coalition size
+            binary_observation[2] = len(self.CS[(task+1+self.num_of_tasks)%self.num_of_tasks])/self.n # right coalition size
+            binary_observation[3] = task/self.num_of_tasks # task number
 
             agent_observations.append(binary_observation)
 

@@ -52,26 +52,29 @@ class Agent():
 
             super().__init__()
             # Shared layers for policy and value function networks
-            self.layer1 = tf.keras.layers.Dense(256, activation = 'relu')
+            self.layer1 = tf.keras.layers.Dense(128, activation = 'relu')
+            self.layer2 = tf.keras.layers.Dense(128, activation = 'relu')
             self.cout = tf.keras.layers.Dense(action_size_comm, activation = 'softmax') # state to mean, stddev for gaussian p.d. dist.
 
         def call(self, state):
 
             x = tf.convert_to_tensor(state)
             x = self.layer1(x)
+            x = self.layer2(x)
             value = self.cout(x)
 
             return value
 
 
-    def __init__(self, action_size_comm, alr, vlr):
+    def __init__(self, action_size_comm, alr, vlr, clr):
         self.aModel = self.ActorNetwork()
         self.vModel = self.CriticNetwork()
         self.cModel = self.CommNetwork(action_size_comm)
         self.gamma = 0.99
+        self.ent_coef = 0.1
 
         self.alr = alr
-        self.clr = alr
+        self.clr = clr
         self.vlr = vlr
 
         self.aopt = tf.keras.optimizers.Adam(learning_rate=self.alr)
@@ -113,14 +116,17 @@ class Agent():
             # move loss
             move_out = self.aModel(state, training=True)
             dist_move = tfp.distributions.Categorical(probs=move_out, dtype=tf.float32)
+            entropy = dist_move.entropy()
             log_prob_move = dist_move.log_prob(action_move)
-            loss_actor = -log_prob_move * td
+            loss_actor = -log_prob_move * td - entropy * self.ent_coef
 
             # comm loss
             comm_out = self.cModel(context, training=True)
             dist_comm = tfp.distributions.Categorical(probs=comm_out, dtype=tf.float32)
             log_prob_comm = dist_comm.log_prob(action_comm)
-            loss_comm = -log_prob_comm * (reward-singleton_val)
+            err = tf.constant(reward, dtype=tf.float32)
+            err = tf.math.sigmoid(err)
+            loss_comm = -log_prob_comm * err
 
         grads_actor = tape.gradient(loss_actor, self.aModel.trainable_variables)
         grads_critic = tape.gradient(loss_critic, self.vModel.trainable_variables)
