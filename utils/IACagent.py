@@ -4,6 +4,7 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+from utils.Mish import Mish
 
 class Agent():
 
@@ -13,8 +14,8 @@ class Agent():
 
             super().__init__()
             # Shared layers for policy and value function networks
-            self.layer1 = tf.keras.layers.Dense(256, activation = 'relu')
-            self.layer2 = tf.keras.layers.Dense(256, activation = 'relu')
+            self.layer1 = tf.keras.layers.Dense(256, activation = Mish())
+            self.layer2 = tf.keras.layers.Dense(256, activation = Mish())
             self.mout = tf.keras.layers.Dense(3, activation = 'softmax') # state to action probabilities
 
         def call(self, state):
@@ -33,8 +34,8 @@ class Agent():
 
             super().__init__()
             # Shared layers for policy and value function networks
-            self.layer1 = tf.keras.layers.Dense(256, activation = 'relu')
-            self.layer2 = tf.keras.layers.Dense(256, activation = 'relu')
+            self.layer1 = tf.keras.layers.Dense(256, activation = Mish())
+            self.layer2 = tf.keras.layers.Dense(256, activation = Mish())
             self.vout = tf.keras.layers.Dense(1, activation = None) # ... from state to value scalar
 
         def call(self, state):
@@ -71,7 +72,7 @@ class Agent():
         self.vModel = self.CriticNetwork()
         self.cModel = self.CommNetwork(action_size_comm)
         self.gamma = 0.99
-        self.ent_coef = 0.1
+        self.ent_coef = 0.01
 
         self.alr = alr
         self.clr = clr
