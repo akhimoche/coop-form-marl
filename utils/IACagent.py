@@ -72,7 +72,7 @@ class Agent():
         self.vModel = self.CriticNetwork()
         self.cModel = self.CommNetwork(action_size_comm)
         self.gamma = 0.99
-        self.ent_coef = 0.01
+        self.ent_coef = 0.1
 
         self.alr = alr
         self.clr = clr
@@ -98,11 +98,13 @@ class Agent():
 
         return int(action_comm.numpy()[0])
 
+    @tf.function
     def train(self, state, action, reward, next_state, context, singleton_val): # train from an episode of experience
 
-        state = np.array([state])
-        next_state = np.array([next_state])
-        context = np.array([context])
+        state = tf.reshape(state, (1, -1))
+        next_state = tf.reshape(next_state, (1, -1))
+        context = tf.reshape(context, (1, -1))
+        reward = tf.cast(reward, tf.float32)
 
         with tf.GradientTape(persistent=True) as tape:
             # critic loss calculation
@@ -125,24 +127,12 @@ class Agent():
             comm_out = self.cModel(context, training=True)
             dist_comm = tfp.distributions.Categorical(probs=comm_out, dtype=tf.float32)
             log_prob_comm = dist_comm.log_prob(action_comm)
-            err = tf.constant(reward, dtype=tf.float32)
-            err = tf.math.sigmoid(err)
+            err = tf.math.sigmoid(reward)
             loss_comm = -log_prob_comm * err
 
         grads_actor = tape.gradient(loss_actor, self.aModel.trainable_variables)
         grads_critic = tape.gradient(loss_critic, self.vModel.trainable_variables)
         grads_comm = tape.gradient(loss_comm, self.cModel.trainable_variables)
-
-        # numerical stability check
-        for grad in grads_actor:
-            if tf.math.reduce_any(tf.math.is_nan(grad)) or tf.math.reduce_any(tf.math.is_inf(grad)):
-                raise ValueError(f"NaNs or infs in actor gradient. Stopping training.")
-        for grad in grads_critic:
-            if tf.math.reduce_any(tf.math.is_nan(grad)) or tf.math.reduce_any(tf.math.is_inf(grad)):
-                raise ValueError(f"NaNs or infs in critic gradient. Stopping training.")
-        for grad in grads_comm:
-            if tf.math.reduce_any(tf.math.is_nan(grad)) or tf.math.reduce_any(tf.math.is_inf(grad)):
-                raise ValueError(f"NaNs or infs in comm gradient. Stopping training.")
 
         self.aopt.apply_gradients(zip(grads_actor, self.aModel.trainable_variables))
         self.copt.apply_gradients(zip(grads_comm, self.cModel.trainable_variables))
