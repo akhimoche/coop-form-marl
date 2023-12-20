@@ -4,6 +4,7 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+import random
 from utils.Mish import Mish
 
 class Agent():
@@ -47,40 +48,21 @@ class Agent():
 
             return value
 
-    class CommNetwork(tf.keras.Model):
-
-        def __init__(self, action_size_comm):
-
-            super().__init__()
-            # Shared layers for policy and value function networks
-            self.layer1 = tf.keras.layers.Dense(128, activation = 'relu')
-            self.layer2 = tf.keras.layers.Dense(128, activation = 'relu')
-            self.cout = tf.keras.layers.Dense(action_size_comm, activation = 'softmax') # state to mean, stddev for gaussian p.d. dist.
-
-        def call(self, state):
-
-            x = tf.convert_to_tensor(state)
-            x = self.layer1(x)
-            x = self.layer2(x)
-            value = self.cout(x)
-
-            return value
-
-
-    def __init__(self, action_size_comm, alr, vlr, clr, ecoef):
+    def __init__(self, action_size_comm, alr, vlr, ecoef):
         self.aModel = self.ActorNetwork()
         self.vModel = self.CriticNetwork()
-        self.cModel = self.CommNetwork(action_size_comm)
         self.gamma = 0.99
         self.ent_coef = ecoef
 
         self.alr = alr
-        self.clr = clr
         self.vlr = vlr
 
         self.aopt = tf.keras.optimizers.Adam(learning_rate=self.alr)
-        self.copt = tf.keras.optimizers.Adam(learning_rate=self.clr)
         self.vopt = tf.keras.optimizers.Adam(learning_rate=self.vlr)
+
+        self.num_arms = action_size_comm
+        self.counts = np.ones((action_size_comm), dtype=float)  # Number of times each arm has been pulled
+        self.values = np.zeros((action_size_comm), dtype=float)  # Estimated values of each arm
 
     def choose_action_move(self, state):
         move_out= self.aModel(np.array([state]))
@@ -90,20 +72,25 @@ class Agent():
 
         return int(action_move.numpy()[0])
 
-    def choose_action_comm(self, context):
-        comm_out= self.cModel(np.array([context]))
+    def select_arm(self):
+        # Select arm with the maximum UCB value
+        ucb_values = self.values + np.sqrt(2 * np.log(sum(self.counts)) / (self.counts+1e-5 ))
+        chosen_arm = np.argmax(ucb_values)
 
-        dist_comm = tfp.distributions.Categorical(probs=comm_out, dtype=tf.float32) # categorical dist
-        action_comm = dist_comm.sample() # ... sampled to get movement action
+        if sum(self.values) == 0:
+            chosen_arm = random.randint(0,self.num_arms-1)
+        return int(chosen_arm)
 
-        return int(action_comm.numpy()[0])
+    def update_comm(self, arm, reward):
+        # Update the estimates after pulling the selected arm and observing the reward
+        self.counts[arm] += 1
+        self.values[arm] += (reward - self.values[arm]) / self.counts[arm]
 
     @tf.function
-    def train(self, state, action, reward, next_state, context, singleton_val): # train from an episode of experience
+    def train(self, state, action, reward, next_state): # train from an episode of experience
 
         state = tf.reshape(state, (1, -1))
         next_state = tf.reshape(next_state, (1, -1))
-        context = tf.reshape(context, (1, -1))
         reward = tf.cast(reward, tf.float32)
 
         with tf.GradientTape(persistent=True) as tape:
@@ -123,17 +110,8 @@ class Agent():
             log_prob_move = dist_move.log_prob(action_move)
             loss_actor = -log_prob_move * td - entropy * self.ent_coef
 
-            # comm loss
-            comm_out = self.cModel(context, training=True)
-            dist_comm = tfp.distributions.Categorical(probs=comm_out, dtype=tf.float32)
-            log_prob_comm = dist_comm.log_prob(action_comm)
-            err = tf.math.sigmoid(reward)
-            loss_comm = -log_prob_comm * err
-
         grads_actor = tape.gradient(loss_actor, self.aModel.trainable_variables)
         grads_critic = tape.gradient(loss_critic, self.vModel.trainable_variables)
-        grads_comm = tape.gradient(loss_comm, self.cModel.trainable_variables)
 
         self.aopt.apply_gradients(zip(grads_actor, self.aModel.trainable_variables))
-        self.copt.apply_gradients(zip(grads_comm, self.cModel.trainable_variables))
         self.vopt.apply_gradients(zip(grads_critic, self.vModel.trainable_variables))
