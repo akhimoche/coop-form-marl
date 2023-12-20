@@ -67,12 +67,12 @@ class Agent():
             return value
 
 
-    def __init__(self, action_size_comm, alr, vlr, clr):
+    def __init__(self, action_size_comm, alr, vlr, clr, ecoef):
         self.aModel = self.ActorNetwork()
         self.vModel = self.CriticNetwork()
         self.cModel = self.CommNetwork(action_size_comm)
         self.gamma = 0.99
-        self.ent_coef = 0.1
+        self.ent_coef = ecoef
 
         self.alr = alr
         self.clr = clr
