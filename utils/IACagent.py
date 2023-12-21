@@ -105,6 +105,7 @@ class Agent():
         next_state = tf.reshape(next_state, (1, -1))
         context = tf.reshape(context, (1, -1))
         reward = tf.cast(reward, tf.float32)
+        singleton_val = tf.cast(singleton_val, tf.float32)
 
         with tf.GradientTape(persistent=True) as tape:
             # critic loss calculation
@@ -127,7 +128,7 @@ class Agent():
             comm_out = self.cModel(context, training=True)
             dist_comm = tfp.distributions.Categorical(probs=comm_out, dtype=tf.float32)
             log_prob_comm = dist_comm.log_prob(action_comm)
-            err = tf.math.sigmoid(reward)
+            err = reward - singleton_val
             loss_comm = -log_prob_comm * err
 
         grads_actor = tape.gradient(loss_actor, self.aModel.trainable_variables)
