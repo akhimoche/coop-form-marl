@@ -48,7 +48,7 @@ class Agent():
 
             return value
 
-    def __init__(self, action_size_comm, alr, vlr, ecoef):
+    def __init__(self, action_size_comm, alr, vlr, ecoef, num_arms):
         self.aModel = self.ActorNetwork()
         self.vModel = self.CriticNetwork()
         self.gamma = 0.99
@@ -60,9 +60,38 @@ class Agent():
         self.aopt = tf.keras.optimizers.Adam(learning_rate=self.alr)
         self.vopt = tf.keras.optimizers.Adam(learning_rate=self.vlr)
 
-        self.num_arms = action_size_comm
-        self.counts = np.ones((action_size_comm), dtype=float)  # Number of times each arm has been pulled
-        self.values = np.zeros((action_size_comm), dtype=float)  # Estimated values of each arm
+        self.num_arms = num_arms
+        self.prior_mean_mu = 0.0
+        self.prior_mean_sigma = 1.0
+        self.prior_var_alpha = 1.0
+        self.prior_var_beta = 1.0
+
+        # Initialize parameters for each arm using a NumPy array
+        initial_means = np.random.normal(self.prior_mean_mu, self.prior_mean_sigma, num_arms)
+        initial_variances = 1.0 / np.random.gamma(self.prior_var_alpha, 1.0 / self.prior_var_beta, num_arms)
+
+        # Create a NumPy array to store the parameters for each arm
+        self.prior_parameters = np.column_stack((initial_means, initial_variances))
+
+    def select_arm(self):
+        # Use NumPy operations for sampling from the posterior
+        sampled_means = np.random.normal(self.prior_parameters[:, 0], np.sqrt(self.prior_parameters[:, 1]))
+        sampled_variances = np.random.gamma(self.prior_var_alpha, 1.0 / self.prior_var_beta, self.num_arms)
+        sampled_parameters = np.column_stack((sampled_means, sampled_variances))
+        return np.argmax(sampled_parameters[:, 0])
+
+    def update_comm(self, arm, reward):
+        # Update the posterior distribution based on the observed reward
+        # For simplicity, let's assume a conjugate update for Gaussian distribution
+        updated_mean = (self.prior_parameters[arm, 1] * reward +
+                        self.prior_mean_sigma**2 * self.prior_parameters[arm, 0]) / \
+                       (self.prior_parameters[arm, 1] + self.prior_mean_sigma**2)
+
+        updated_variance = 1.0 / (1.0 / self.prior_parameters[arm, 1] + 1.0 / self.prior_mean_sigma**2)
+
+        # Update the parameters for the selected arm
+        self.prior_parameters[arm, 0] = updated_mean
+        self.prior_parameters[arm, 1] = updated_variance
 
     def choose_action_move(self, state):
         move_out= self.aModel(np.array([state]))
@@ -71,20 +100,6 @@ class Agent():
         action_move = dist_move.sample() # ... sampled to get movement action
 
         return int(action_move.numpy()[0])
-
-    def select_arm(self):
-        # Select arm with the maximum UCB value
-        ucb_values = self.values + np.sqrt(2 * np.log(sum(self.counts)) / (self.counts+1e-5 ))
-        chosen_arm = np.argmax(ucb_values)
-
-        if sum(self.values) == 0:
-            chosen_arm = random.randint(0,self.num_arms-1)
-        return int(chosen_arm)
-
-    def update_comm(self, arm, reward):
-        # Update the estimates after pulling the selected arm and observing the reward
-        self.counts[arm] += 1
-        self.values[arm] += (reward - self.values[arm]) / self.counts[arm]
 
     @tf.function
     def train(self, state, action, reward, next_state): # train from an episode of experience
