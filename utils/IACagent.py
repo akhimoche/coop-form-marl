@@ -128,12 +128,14 @@ class Agent():
             comm_out = self.cModel(context, training=True)
             dist_comm = tfp.distributions.Categorical(probs=comm_out, dtype=tf.float32)
             log_prob_comm = dist_comm.log_prob(action_comm)
-            err = reward - singleton_val
+            err = (reward - singleton_val)
             loss_comm = -log_prob_comm * err
 
         grads_actor = tape.gradient(loss_actor, self.aModel.trainable_variables)
         grads_critic = tape.gradient(loss_critic, self.vModel.trainable_variables)
         grads_comm = tape.gradient(loss_comm, self.cModel.trainable_variables)
+
+        grads_comm, _ = tf.clip_by_global_norm(grads_comm, clip_norm=1.0)
 
         self.aopt.apply_gradients(zip(grads_actor, self.aModel.trainable_variables))
         self.copt.apply_gradients(zip(grads_comm, self.cModel.trainable_variables))
