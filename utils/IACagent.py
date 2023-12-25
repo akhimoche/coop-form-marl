@@ -48,7 +48,7 @@ class Agent():
 
             return value
 
-    def __init__(self, action_size_comm, alr, vlr, ecoef, num_arms):
+    def __init__(self, alr, vlr, ecoef, num_arms):
         self.aModel = self.ActorNetwork()
         self.vModel = self.CriticNetwork()
         self.gamma = 0.99
@@ -115,14 +115,11 @@ class Agent():
             td = reward + self.gamma * v_p - v
             loss_critic = tf.reduce_mean(td**2)  # Mean squared error
 
-            # Calculate the log probabilities and losses for both action types
-            action_move, action_comm = action[0], action[1]
-
             # move loss
             move_out = self.aModel(state, training=True)
             dist_move = tfp.distributions.Categorical(probs=move_out, dtype=tf.float32)
             entropy = dist_move.entropy()
-            log_prob_move = dist_move.log_prob(action_move)
+            log_prob_move = dist_move.log_prob(action)
             loss_actor = -log_prob_move * td - entropy * self.ent_coef
 
         grads_actor = tape.gradient(loss_actor, self.aModel.trainable_variables)
