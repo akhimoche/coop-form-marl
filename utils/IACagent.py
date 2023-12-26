@@ -75,10 +75,10 @@ class Agent():
 
     def select_arm(self):
         # Use NumPy operations for sampling from the posterior
-        sampled_means = np.random.normal(self.prior_parameters[:, 0], np.sqrt(self.prior_parameters[:, 1]))
-        sampled_variances = np.random.gamma(self.prior_var_alpha, 1.0 / self.prior_var_beta, self.num_arms)
+        sampled_means = np.random.normal(self.prior_parameters[:, 0], np.sqrt(self.prior_parameters[:, 1])) # means are drawn from normal dist
+        sampled_variances = np.random.gamma(self.prior_var_alpha, 1.0 / self.prior_var_beta, self.num_arms) # variances sampled from gamma dist
         sampled_parameters = np.column_stack((sampled_means, sampled_variances))
-        return np.argmax(sampled_parameters[:, 0])
+        return np.argmax(sampled_parameters[:, 0]) # return sampled means
 
     def update_comm(self, arm, reward):
         # Update the posterior distribution based on the observed reward

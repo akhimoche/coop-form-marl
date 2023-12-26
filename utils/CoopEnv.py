@@ -24,6 +24,7 @@ class CoopEnv(gym.Env):
         self.CS = [set() for i in range(1, self.num_of_tasks + 1)] # starting coalition structure
         self.player_locations = {} # track the location of each agent in the coalition structure
         self.singleton_vals = {}
+        self.pref_matrix = np.ones((self.num_of_tasks, self.n))
         # ------------------------------------------------------ #
 
 
@@ -36,6 +37,10 @@ class CoopEnv(gym.Env):
 
             self.player_locations[f'Player {player + 1}'] = chosen_task # ... while recording the index...
             self.singleton_vals[f'Player {player + 1}'] = 1 # ...and its value
+
+            random.seed(player)
+            preferred_task = random.randint(0, self.num_of_tasks-1)
+            self.pref_matrix[preferred_task][player] = 2
         # ------------------------------------------------------ #
 
     # -------------------- Game Support Methods -------------------- # //
@@ -224,8 +229,8 @@ class CoopEnv(gym.Env):
                 raise ValueError("WARNING: Payoff fraction should not be greater than 1.")
 
             payoff = frac * coal_val
-            rewards[player] = payoff
-
+            multiplier = self.pref_matrix[location][player]
+            rewards[player] = payoff * multiplier
             # check stability with individual rationality
             if payoff < singleton_val:
 
@@ -287,6 +292,7 @@ class CoopEnv(gym.Env):
         self.CS = [set() for i in range(1, self.num_of_tasks + 1)] # starting coalition structure
         self.player_locations = {} # track the location of each agent in the coalition structure
         self.singleton_vals = {}
+        self.pref_matrix = np.ones((self.num_of_tasks, self.n))
         # ------------------------------------------------------ #
 
 
@@ -299,6 +305,10 @@ class CoopEnv(gym.Env):
 
             self.player_locations[f'Player {player + 1}'] = chosen_task # ... while recording the index...
             self.singleton_vals[f'Player {player + 1}'] = 1 # ...and its value
+
+            random.seed(player)
+            preferred_task = random.randint(0, self.num_of_tasks-1)
+            self.pref_matrix[preferred_task][player] = 2
         # ------------------------------------------------------ #
 
         state = self.get_move_observations_from_CS()
