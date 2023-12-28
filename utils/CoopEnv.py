@@ -138,8 +138,8 @@ class CoopEnv(gym.Env):
             if actions[player] == 2: # move to right vertex
                 new_coalition = (current_coalition+1+self.num_of_tasks)%self.num_of_tasks
 
-            if new_coalition >= self.num_of_tasks or new_coalition < 0:
-                raise ValueError(f'Agent {player+1} is selecting an invalid task: {task}. Stopping training.')
+            if actions[player] >= 3 or actions[player] < 0:
+                raise ValueError(f'Agent {player+1} is selecting an invalid move: {task}. Stopping training.')
 
             # perform move
             self.CS[current_coalition].remove(f'{player + 1}') # remove from old coalition...
