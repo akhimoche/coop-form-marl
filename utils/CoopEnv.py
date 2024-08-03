@@ -84,34 +84,9 @@ class CoopEnv(gym.Env):
             binary_observation = np.zeros((4)) # prepare an observation array
 
             binary_observation[0] = len(current_coalition)/self.n # current coalition size
-            binary_observation[1] = len(self.CS[(task-1+self.num_of_tasks)%self.num_of_tasks])/self.n # left coalition size
-            binary_observation[2] = len(self.CS[(task+1+self.num_of_tasks)%self.num_of_tasks])/self.n # right coalition size
+            binary_observation[1] = len(self.CS[(task-1)%self.num_of_tasks])/self.n # left coalition size
+            binary_observation[2] = len(self.CS[(task+1)%self.num_of_tasks])/self.n # right coalition size
             binary_observation[3] = task/self.num_of_tasks # task number
-
-            agent_observations.append(binary_observation)
-
-        return agent_observations
-
-    def get_comm_observations_from_CS(self):
-
-        """ Given a coalition structure, return ordered list of binary strings representing
-            set observations for each agent (i.e what set the agent is in).
-
-            Output: 'binary_list' - List of arrays containing binary string representation of
-                                    each observed set as observed by each agent.
-
-        """
-
-        agent_observations = []
-
-        for i in range(self.n):
-
-            task = self.player_locations[f'Player {i+1}']
-            current_coalition = self.CS[task] # get the coalition that player i is in
-
-            binary_observation = np.zeros((self.n)) # prepare an observation array
-            indices = [int(a)-1 for a in list(current_coalition)] # get indices of all players in coalition (tag is 1 more than index)
-            binary_observation[indices] = 1 # set indices to 1 to indicate present
 
             agent_observations.append(binary_observation)
 
@@ -133,10 +108,10 @@ class CoopEnv(gym.Env):
                 continue
 
             if actions[player] == 1: # move to left vertex
-                new_coalition =  (current_coalition-1+self.num_of_tasks)%self.num_of_tasks
+                new_coalition =  (current_coalition-1)%self.num_of_tasks
 
             if actions[player] == 2: # move to right vertex
-                new_coalition = (current_coalition+1+self.num_of_tasks)%self.num_of_tasks
+                new_coalition = (current_coalition+1)%self.num_of_tasks
 
             if new_coalition >= self.num_of_tasks or new_coalition < 0:
                 raise ValueError(f'Agent {player+1} is selecting an invalid task: {task}. Stopping training.')
@@ -150,9 +125,8 @@ class CoopEnv(gym.Env):
 
 
         next_state = self.get_move_observations_from_CS()
-        context = self.get_comm_observations_from_CS()
 
-        return next_state, context
+        return next_state
 
     def communication_phase(self, actions):
 
@@ -247,9 +221,9 @@ class CoopEnv(gym.Env):
             Movement - Agents' chosen actions are applied to form a new CS.
         """
         # Movement Phase
-        next_state, context = self.movement_phase(action_move)
+        next_state = self.movement_phase(action_move)
 
-        return next_state, context
+        return next_state
         # ------------------------------------------------------ #
 
     def step2(self, action_comm):
@@ -303,7 +277,7 @@ class CoopEnv(gym.Env):
 
         state = self.get_move_observations_from_CS()
 
-        return state
+        return state, self.singleton_vals, self.player_locations
 
     def render(self):
         pass
