@@ -2,19 +2,17 @@ import numpy as np
 import random
 
 class GAgent:
-    def __init__(self, num_tasks, sval, start_task, initial_temperature=1.0, temperature_decay=0.92, min_temperature=0.1):
+    def __init__(self, num_tasks, start_task, initial_temperature=1.0, temperature_decay=0.92, min_temperature=0.1):
         # Player values
-        self.threshold = sval
         self.current_task = start_task
         self.temperature = initial_temperature
-        self.initial_temperature = initial_temperature
         self.temperature_decay = temperature_decay
         self.min_temperature = min_temperature
 
         # Player data storage
         self.sum_table = np.zeros((num_tasks))
         self.count_table = np.zeros((num_tasks))
-        self.satisfaction_table = np.zeros((num_tasks))  # assume all coalitions meet threshold initially so they explore
+        self.satisfaction_table = np.zeros((num_tasks))
         self.num_tasks = num_tasks
 
     def softmax(self, x, temperature):

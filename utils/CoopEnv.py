@@ -277,7 +277,7 @@ class CoopEnv(gym.Env):
 
         state = self.get_move_observations_from_CS()
 
-        return state, self.singleton_vals, self.player_locations
+        return state, self.player_locations
 
     def render(self):
         pass
