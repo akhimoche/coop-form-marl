@@ -2,7 +2,7 @@ import numpy as np
 import random
 
 class GAgent:
-    def __init__(self, num_tasks, start_task, initial_temperature=1.0, temperature_decay=0.92, min_temperature=0.1):
+    def __init__(self, num_tasks, start_task, initial_temperature=1.0, temperature_decay=0.99, min_temperature=0.1):
         # Player values
         self.current_task = start_task
         self.temperature = initial_temperature
